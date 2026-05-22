@@ -1,0 +1,103 @@
+% Preamble personalizado para portada y formato
+
+% Paquetes adicionales
+\usepackage{tikz}
+\usepackage[table]{xcolor}
+\usepackage{caption}
+\usepackage{fancyhdr}
+\usepackage{float}
+\usepackage{fvextra}
+\usepackage{array}
+\usepackage{hyperref}
+
+\raggedbottom
+
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,commandchars=\\\{\}}
+
+\definecolor{uocblue}{RGB}{0,102,153}
+
+% Formato de captions
+\captionsetup[figure]{labelfont=bf,labelsep=period}
+\captionsetup[table]{labelfont=bf,labelsep=period}
+\addto\captionsspanish{\renewcommand{\tablename}{Tabla}}
+
+% Estilo de cabeceras
+\pagestyle{fancy}
+\fancyhf{}
+
+% Páginas impares
+\fancyhead[RO]{\small Software para el Análisis de Datos}
+
+% Páginas pares
+\fancyhead[LE]{\small Dra.\ Marta Barea Sepúlveda}
+
+% Número de página en el pie centrado
+\fancyfoot[C]{\thepage}
+
+% Línea superior de la cabecera
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0pt}
+
+% Aplicar también en páginas plain
+\fancypagestyle{plain}{%
+    \fancyhf{}
+    \fancyhead[RO]{\small Software para el Análisis de Datos}
+    \fancyhead[LE]{\small Dra.\ Marta Barea Sepúlveda}
+    \fancyfoot[C]{\thepage}
+    \renewcommand{\headrulewidth}{0.4pt}
+    \renewcommand{\footrulewidth}{0pt}
+}
+
+\AtBeginDocument{
+    \hypersetup{
+        colorlinks=true,
+        linkcolor=uocblue,
+        urlcolor=uocblue,
+        citecolor=uocblue,
+        pdfborder={0 0 0}
+    }
+}
+
+% Redefinir \maketitle para portada personalizada
+\makeatletter
+\renewcommand{\maketitle}{%
+    \thispagestyle{empty}%
+    \begin{tikzpicture}[remember picture,overlay]
+        % Logo UB
+        \node[anchor=north west, xshift=2.5cm, yshift=-1.5cm] at (current page.north west) {%
+            \includegraphics[width=0.2\textwidth]{../assets/images/ub_logo.png}};
+        % Logo UOC
+        \node[anchor=north east, xshift=-2.5cm, yshift=-1.5cm] at (current page.north east) {%
+            \includegraphics[width=0.2\textwidth]{../assets/images/uoc_logo.png}};
+        % Autora y fecha
+        \node[anchor=south west, xshift=2.5cm, yshift=2cm, text width=10cm, align=left] at (current page.south west) {%
+            \normalsize\textbf{Autora:} \@author\\[3pt]%
+            \textbf{Fecha:} \@date};
+    \end{tikzpicture}%
+
+    \vspace*{5cm}%
+
+    \begin{center}
+        {\normalsize\textbf{MÁSTER EN BIOINFORMÁTICA Y BIOESTADÍSTICA}}\\[1cm]
+        {\Large\textbf{PEC 4}}\\[0.5cm]
+
+        \rule{0.8\textwidth}{1.2pt}\\[0.6cm]
+
+        \begin{minipage}{0.8\textwidth}
+            \centering
+            \fontsize{24}{29}\selectfont\bfseries \@title\par
+        \end{minipage}
+
+        \\[0.6cm]
+        \rule{0.8\textwidth}{1.2pt}\\[1cm]
+
+        {\Large Software para el Análisis de Datos}
+    \end{center}
+
+    \vfill
+    \clearpage
+
+    % Suprimir numeración en páginas de la tabla de contenidos
+    \pagestyle{empty}%
+}
+\makeatother

@@ -1,0 +1,174 @@
+---
+title: "Desarrollo de una pipeline bioinformática aplicada al carcinoma renal de células claras"
+author: "Dra. Marta Barea Sepúlveda"
+date: "18 de junio de 2026"
+output:
+  pdf_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    highlight: tango
+    latex_engine: xelatex
+    keep_tex: false
+    includes:
+      in_header: preamble.tex
+  word_document:
+    toc: true
+    toc_depth: '3'
+classoption: twoside
+geometry: top=2.5cm, bottom=2.5cm, left=2.5cm, right=2.5cm
+fontsize: 11pt
+lang: es
+---
+
+\clearpage
+\pagestyle{fancy}
+\setcounter{page}{1}
+
+```{r setup, include=FALSE} 
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, tidy = FALSE) 
+```
+
+# Introducción
+
+\newpage
+
+# Estado del Arte
+
+\newpage
+
+# Adquisición y procesamiento de datos
+
+## Acceso y exploración de los datos TCGA-KIRC
+
+Antes de realizar cualquier análisis bioinformático, es fundamental disponer de un conjunto de datos adecuado y correctamente organizado. En este tipo de estudios, una parte importante del trabajo inicial consiste en localizar, descargar y preparar los datos que posteriormente serán utilizados en los análisis.
+
+En este contexto, se trabajó con los datos del proyecto **TCGA-KIRC**, disponibles en el repositorio **Genomic Data Commons (GDC)** del **National Cancer Institute (NCI)**. Para acceder y gestionar esta información se utilizó el paquete **TCGAbiolinks**, desarrollado para el entorno **R/Bioconductor**, el cual facilita la consulta, descarga e integración de datos procedentes del proyecto **TCGA**.
+
+Como primer paso, se realizó una consulta general del proyecto con el fin de explorar, dentro del repositorio **GDC**, la disponibilidad del proyecto **TCGA-KIRC** y comprender cómo se encontraban organizados dentro del mismo. 
+
+A continuación, se muestran los pasos realizados, así como el código correspondiente, durante esta fase inicial de exploración.
+
+```{r} 
+# Cargar librerías necesarias
+library(TCGAbiolinks)
+library(SummarizedExperiment)
+library(dplyr)
+
+# Obtener los proyectos del GDC
+projects <- getGDCprojects()
+
+# Verificar que TCGA-KIRC exista
+kirc_project <- projects %>%
+  filter(project_id == "TCGA-KIRC")
+
+print(kirc_project)
+
+# Obtener un resumen del proyecto
+kirc_summary <- getProjectSummary("TCGA-KIRC")
+
+# Mostrar resumen
+kirc_summary
+```
+
+Como se puede comprobar, el resumen obtenido con la función `getProjectSummary()` permite ver cómo están organizados los datos del proyecto **TCGA-KIRC** dentro del repositorio **GDC**. En este caso, los datos no se presentan directamente en una tabla lista para su análisis, sino que están organizados por categorías, cada una de las cuales incluye los archivos correspondientes.
+
+En este sentido, cada proyecto de TCGA incluye distintos tipos de datos biomédicos y moleculares. Dentro de cada categoría se agrupan archivos relacionados con los pacientes que forman parte del estudio. Por ello, el resumen muestra tanto el número de archivos disponibles (`file_count`) como el número de casos o pacientes asociados (`case_count`) en cada categoría.
+
+En relación con el proyecto **TCGA-KIRC**, puede observarse que dispone de una amplia cantidad de información clínica y molecular almacenada en el repositorio **GDC**. En total, el proyecto cuenta con:
+
+\begin{itemize}
+    \item \textbf{8\,820 archivos}
+    \item \textbf{537 pacientes}
+    \item \textbf{10 categorías de datos}
+\end{itemize}
+
+Entre las categorías disponibles se incluyen datos clínicos y diferentes tipos de información molecular obtenida mediante técnicas de secuenciación y análisis biológico. Gracias a ello, es posible realizar estudios relacionados con análisis de supervivencia, genética, expresión génica, epigenética y proteínas. 
+
+En la **Tabla 1** se resumen las principales categorías de datos disponibles en el proyecto **TCGA-KIRC**, junto con una breve descripción de cada una de ellas:
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.45}
+\setlength{\tabcolsep}{8pt}
+
+\caption{Principales categorías de datos disponibles en el proyecto}
+\label{tab:categorias_tcga}
+
+\begin{tabular}{|>{\centering\arraybackslash}p{4.5cm}|p{9cm}|}
+\hline
+\rowcolor[HTML]{EAEAEA}
+\textbf{Categoría} & \textbf{Descripción} \\
+\hline
+Simple Nucleotide Variation &
+Información sobre mutaciones puntuales y pequeños cambios en el ADN de las muestras tumorales. \\
+\hline
+Sequencing Reads &
+Lecturas de secuenciación obtenidas directamente de los experimentos antes de su procesamiento. \\
+\hline
+Biospecimen &
+Datos relacionados con las muestras biológicas utilizadas en el estudio, como tejido tumoral o tejido normal. \\
+\hline
+Clinical &
+Información clínica y demográfica de los pacientes incluidos en el proyecto. \\
+\hline
+Copy Number Variation &
+Cambios en el número de copias de determinadas regiones del ADN o de algunos genes. \\
+\hline
+Transcriptome Profiling &
+Datos de expresión génica obtenidos mediante tecnologías RNA-Seq. \\
+\hline
+DNA Methylation &
+Información sobre modificaciones químicas del ADN relacionadas con la regulación génica. \\
+\hline
+Proteome Profiling &
+Datos sobre la presencia y cantidad de proteínas en las muestras analizadas. \\
+\hline
+Somatic Structural Variation &
+Alteraciones estructurales adquiridas en el genoma de las células tumorales. \\
+\hline
+Structural Variation &
+Cambios estructurales de gran tamaño presentes en regiones del genoma. \\
+\hline
+\end{tabular}
+\end{table}
+
+Tal y como se ha visto en la tabla anterior y en la exploración previa del portal GDC, el proyecto **TCGA-KIRC** reúne varios tipos de datos. En este trabajo, no obstante, se decidió trabajar solo con dos conjuntos de información. Por un lado, los datos de **Transcriptome Profiling**, que contienen los recuentos de expresión génica obtenidos mediante RNA-Seq. Por otro, los datos **Clinical**, que aportan la información clínica y demográfica necesaria para contextualizar los resultados moleculares.
+
+En el caso de la transcriptómica, dentro de GDC se seleccionó la opción **Gene Expression Quantification** porque este tipo de dato proporciona directamente las cuantificaciones de expresión génica por muestra, que son las que se necesitan para comparar perfiles de expresión entre pacientes y para los análisis posteriores de tipo estadístico y bioinformático. Es decir, en lugar de descargar lecturas crudas o archivos intermedios de alineamiento, se eligió un nivel de información ya cuantificado y mucho más adecuado para estudiar cambios de expresión génica.
+
+Además, se escogió el flujo de trabajo **STAR - Counts** porque genera recuentos de lectura por gen a partir de un pipeline estandarizado del propio GDC. Esta elección permite partir de una matriz de recuentos homogénea entre muestras, algo especialmente importante cuando después se quieren aplicar métodos de normalización, análisis de expresión diferencial o visualizaciones globales del transcriptoma. En otras palabras, se priorizó una salida que fuera directamente útil para el análisis y que, al mismo tiempo, mantuviera un procesamiento consistente entre todas las muestras del proyecto.
+
+Para obtener estos datos se utilizó el paquete **TCGAbiolinks**. En concreto, `GDCquery()` se empleó para definir la búsqueda de los archivos transcriptómicos del proyecto, `GDCdownload()` para descargarlos en local y `GDCquery_clinic()` para recuperar la información clínica de los pacientes. Con estas funciones fue posible reunir, de forma ordenada, los datos que posteriormente se utilizarán en los análisis.
+
+La parte de descarga se trasladó a un script externo, `scripts/download_tcga_kirc_data.R`, para mantener separado el proceso de adquisición de datos del proceso de análisis. Esta decisión resulta útil porque evita que, cada vez que se renderiza el documento, se vuelva a lanzar la descarga desde GDC, algo que puede ralentizar bastante la compilación del informe.
+
+El script se ejecuta una única vez desde la raíz del proyecto con el siguiente comando:
+
+```{r, eval=FALSE}
+system("Rscript scripts/download_tcga_kirc_data.R")
+```
+
+A continuación se muestra el contenido del script. Se incluye aquí únicamente con fines documentales, pero no se ejecuta dentro del propio RMarkdown para evitar que el renderizado del informe vuelva a iniciar la descarga.
+
+```{r, echo=FALSE, results='asis'}
+script_candidates <- c(
+  "../scripts/download_tcga_kirc_data.R",
+  "scripts/download_tcga_kirc_data.R"
+)
+
+script_path <- script_candidates[file.exists(script_candidates)][1]
+
+if (is.na(script_path)) {
+  stop(
+    "No se encontro el script scripts/download_tcga_kirc_data.R.",
+    call. = FALSE
+  )
+}
+
+cat("```r\n")
+cat(readLines(script_path, warn = FALSE), sep = "\n")
+cat("\n```\n")
+```
+
+Una vez ejecutado el script, los archivos quedan almacenados en la carpeta **data** del repositorio. A partir de ese momento, ya no es necesario volver a ejecutar la descarga para esta parte del documento. En su lugar, puede mostrarse directamente qué contenido se ha guardado en disco, cuántos archivos se han obtenido, en qué formato están y cuánto espacio ocupan.
