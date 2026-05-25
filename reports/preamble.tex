@@ -9,6 +9,28 @@
 \usepackage{fvextra}
 \usepackage{array}
 \usepackage{hyperref}
+\usepackage{csquotes}
+
+% Mantiene el formato APA de las referencias, pero muestra etiquetas [n]
+% en la bibliografia para que coincidan con las citas numericas del texto.
+\AtBeginDocument{%
+  \ExecuteBibliographyOptions{labelnumber}%
+  \DeclareFieldFormat{labelnumberwidth}{\mkbibbrackets{#1}}%
+  \defbibenvironment{bibliography}
+     {\list
+         {\printtext[labelnumberwidth]{%
+             \printfield{labelprefix}%
+             \printfield{labelnumber}}}
+         {\setlength{\labelwidth}{\labelnumberwidth}%
+          \setlength{\leftmargin}{\labelwidth}%
+          \setlength{\labelsep}{\biblabelsep}%
+          \addtolength{\leftmargin}{\labelsep}%
+          \setlength{\itemsep}{\bibitemsep}%
+          \setlength{\parsep}{\bibparsep}}%
+          \renewcommand*{\makelabel}[1]{\hss##1}}%
+     {\endlist}%
+     {\item}%
+}
 
 \raggedbottom
 
@@ -88,8 +110,11 @@
             \fontsize{24}{29}\selectfont\bfseries \@title\par
         \end{minipage}
 
-        \\[0.6cm]
-        \rule{0.8\textwidth}{1.2pt}\\[1cm]
+        \vspace{0.6cm}
+
+        \rule{0.8\textwidth}{1.2pt}
+
+        \vspace{1cm}
 
         {\Large Software para el Análisis de Datos}
     \end{center}
