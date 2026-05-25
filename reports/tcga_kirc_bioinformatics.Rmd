@@ -1,5 +1,5 @@
 ---
-title: "Desarrollo de una pipeline bioinformática aplicada al carcinoma renal de células claras"
+title: "Implementación de una estrategia bioinformática aplicada al carcinoma renal de células claras"
 author: "Dra. Marta Barea Sepúlveda"
 date: "18 de junio de 2026"
 output:
@@ -24,10 +24,13 @@ biblatexoptions:
   - sorting=none
   - language=spanish
 link-citations: true
-classoption: twoside
+classoption:
+  - twoside
+  - spanish
 geometry: top=2.5cm, bottom=2.5cm, left=2.5cm, right=2.5cm
 fontsize: 11pt
 lang: es-ES
+babel-lang: spanish
 ---
 
 \clearpage
@@ -35,7 +38,13 @@ lang: es-ES
 \setcounter{page}{1}
 
 ```{r setup, include=FALSE} 
-knitr::opts_chunk$set(warning = FALSE, message = FALSE, tidy = FALSE) 
+knitr::opts_chunk$set(
+  warning = FALSE,
+  message = FALSE,
+  tidy = FALSE,
+  size = "scriptsize"
+)
+options(width = 72)
 ```
 
 # Introducción
@@ -52,7 +61,7 @@ Antes de realizar cualquier análisis bioinformático, es fundamental disponer d
 
 En este contexto, se trabajó con los datos del proyecto **TCGA-KIRC**, disponibles en el repositorio **Genomic Data Commons (GDC)** del **National Cancer Institute (NCI)**. Para acceder y gestionar esta información se utilizó el paquete `TCGAbiolinks`, desarrollado para el entorno R/Bioconductor, el cual facilita la consulta, descarga e integración de datos procedentes del proyecto **TCGA**.
 
-Como primer paso, se realizó una consulta general del proyecto con el fin de explorar, dentro del repositorio **GDC**, la disponibilidad del proyecto **TCGA-KIRC** y comprender cómo se encontraban organizados dentro del mismo. 
+Como primer paso, se realizó una consulta general del proyecto con el fin de explorar, dentro del repositorio GDC, la disponibilidad del proyecto TCGA-KIRC y comprender cómo se encontraban organizados dentro del mismo. 
 
 A continuación, se muestran los pasos realizados, así como el código correspondiente, durante esta fase inicial de exploración.
 
@@ -78,11 +87,11 @@ kirc_summary <- getProjectSummary("TCGA-KIRC")
 kirc_summary
 ```
 
-Como se puede comprobar, el resumen obtenido con la función `getProjectSummary()` permite ver cómo están organizados los datos del proyecto **TCGA-KIRC** dentro del repositorio **GDC**. En este caso, los datos no se presentan directamente en una tabla lista para su análisis, sino que están organizados por categorías, cada una de las cuales incluye los archivos correspondientes.
+Como se puede comprobar, el resumen obtenido con la función `getProjectSummary()` permite ver cómo están organizados los datos del proyecto TCGA-KIRC dentro del repositorio GDC. En este caso, los datos no se presentan directamente en una tabla lista para su análisis, sino que están organizados por categorías, cada una de las cuales incluye los archivos correspondientes.
 
 En este sentido, cada proyecto de TCGA incluye distintos tipos de datos biomédicos y moleculares. Dentro de cada categoría se agrupan archivos relacionados con los pacientes que forman parte del estudio. Por ello, el resumen muestra tanto el número de archivos disponibles (`file_count`) como el número de casos o pacientes asociados (`case_count`) en cada categoría.
 
-En relación con el proyecto **TCGA-KIRC**, puede observarse que dispone de una amplia cantidad de información clínica y molecular almacenada en el repositorio **GDC**. En total, el proyecto cuenta con:
+En relación con el proyecto TCGA-KIRC, puede observarse que dispone de una amplia cantidad de información clínica y molecular almacenada en el repositorio GDC. En total, el proyecto cuenta con:
 
 \begin{itemize}
     \item \textbf{8\,820 archivos}
@@ -92,7 +101,7 @@ En relación con el proyecto **TCGA-KIRC**, puede observarse que dispone de una 
 
 Entre las categorías disponibles se incluyen datos clínicos y diferentes tipos de información molecular obtenida mediante técnicas de secuenciación y análisis biológico. Gracias a ello, es posible realizar estudios relacionados con análisis de supervivencia, genética, expresión génica, epigenética y proteínas. 
 
-En la **Tabla 1** se resumen las principales categorías de datos disponibles en el proyecto **TCGA-KIRC**, junto con una breve descripción de cada una de ellas:
+En la siguiente tabla se resumen las principales categorías de datos disponibles en el proyecto TCGA-KIRC, junto con una breve descripción de cada una de ellas:
 
 \begin{table}[H]
 \centering
@@ -140,7 +149,7 @@ Cambios estructurales de gran tamaño presentes en regiones del genoma. \\
 \end{tabular}
 \end{table}
 
-Tal y como se ha visto en la tabla anterior y en la exploración previa del portal GDC, el proyecto **TCGA-KIRC** reúne varios tipos de datos. En este trabajo, no obstante, se decidió trabajar solo con dos conjuntos de información. Por un lado, los datos de **Transcriptome Profiling**, que contienen los recuentos de expresión génica obtenidos mediante RNA-Seq. Por otro, los datos **Clinical**, que aportan la información clínica y demográfica necesaria para contextualizar los resultados moleculares.
+Tal y como se ha visto en la Tabla \ref{tab:categorias_tcga} y en la exploración previa del portal GDC, el proyecto TCGA-KIRC reúne varios tipos de datos. En este trabajo, no obstante, se decidió trabajar solo con dos conjuntos de información. Por un lado, los datos de **Transcriptome Profiling**, que contienen los recuentos de expresión génica obtenidos mediante RNA-Seq. Por otro, los datos **Clinical**, que aportan la información clínica y demográfica necesaria para contextualizar los resultados moleculares.
 
 En el caso de la transcriptómica, dentro de GDC se seleccionó la opción **Gene Expression Quantification** porque este tipo de dato proporciona directamente las cuantificaciones de expresión génica por muestra, que son las que se necesitan para comparar perfiles de expresión entre pacientes y para los análisis posteriores de tipo estadístico y bioinformático. Es decir, en lugar de descargar lecturas crudas o archivos intermedios de alineamiento, se eligió un nivel de información ya cuantificado y mucho más adecuado para estudiar cambios de expresión génica.
 
@@ -183,7 +192,7 @@ cat("\n```\n")
 
 Una vez ejecutado el script, los archivos quedan almacenados en el directorio `data/` del repositorio del proyecto. A continuación, se muestra un resumen de las carpetas principales generadas, el espacio que ocupan y el tipo de contenido almacenado en cada una.
 
-```{r}
+```{r data-directory-summary-code}
 # Ruta al directorio de datos
 project_dir <- getwd()
 
@@ -228,17 +237,213 @@ files_table <- do.call(
   })
 )
 
-# Mostrar la tabla resumen
-knitr::kable(files_table, caption = "Resumen de las carpetas principales del directorio data")
+# Preparar la tabla en formato LaTeX
+table_latex <- knitr::kable(
+  files_table,
+  format = "latex",
+  booktabs = TRUE,
+  align = c("l", "r", "r", "l", "r")
+)
 ```
 
-Como se puede comproibar en la Tabla 2, el directorio `data/` contiene tres subcarpetas principales: `clinical/`, `prepared/` y `transcriptome/`. Cada una de ellas tiene un tamaño y un tipo de contenido diferente, aunque todas están relacionadas con los datos del proyecto **TCGA-KIRC**.
+```{r data-directory-summary-table, echo=FALSE, results='asis'}
+# Mostrar la tabla resumen
+cat("\\begin{table}[!htbp]\n")
+cat("\\centering\n")
+cat("\\caption{Resumen de las carpetas principales del directorio data}\n")
+cat("\\label{tab:data-directory-summary}\n")
+cat(table_latex)
+cat("\n\\end{table}\n")
+cat("\\FloatBarrier\n")
+```
+
+Como se puede comprobar en la Tabla \ref{tab:data-directory-summary}, el directorio `data/` contiene tres subcarpetas principales: `clinical/`, `prepared/` y `transcriptome/`. Cada una de ellas tiene un tamaño y un tipo de contenido diferente, aunque todas están relacionadas con los datos del proyecto TCGA-KIRC.
 
 En particular, la carpeta `clinical/` contiene los archivos asociados a la información clínica de los pacientes y está compuesta por un único archivo en formato `.tsv`, sin subdirectorios adicionales. Por otro lado, `transcriptome/` incluye los datos de expresión génica obtenidos mediante tecnologías de RNA-Seq, incluyendo un total de 614 archivos en formato `.tsv` distribuidos en 617 subcarpetas. Finalmente, el directorio `prepared/` reúne los objetos previamente procesados y estructurados para su posterior análisis, tales como matrices de recuentos y data frames clínicos preparados para su utilización directa. Este directorio no contiene subcarpetas y únicamente incluye dos archivos en formato `.rds`.
 
 En las secciones siguientes se abordará el procesamiento y análisis de los datos obtenidos. A partir de este punto, el estudio se centrará exclusivamente en los archivos contenidos en el directorio `data/prepared/`.
 
 \newpage
+
+# Análisis bioinformático del conjunto TCGA-KIRC
+
+## Análisis de los datos clínicos
+
+### Exploración inicial del conjunto clínico
+
+Como parte inicial del estudio, se realizó un análisis exploratorio inicial con el objetivo de obtener una visión general de la estructura del conjunto de datos y caracterizar la naturaleza de las variables disponibles para los análisis posteriores. Este tipo de análisis constituye una etapa fundamental en el procesamiento de datos, ya que permite evaluar la calidad y consistencia de la información disponible, así como identificar posibles limitaciones del conjunto de datos, incluyendo la presencia de valores faltantes y la coexistencia de distintos tipos de variables, antes de aplicar métodos de análisis estadístico o técnicas de modelado más avanzadas.
+
+Para ello, se cargó el objeto clínico en formato `.rds` previamente procesado y se empleó la función `glimpse()` del paquete `dplyr`, la cual ofrece una visualización resumida de la estructura interna del *data frame*.
+
+```{r}
+# Cargar librerías necesarias
+library(dplyr)
+
+# Cargar el archivo clínico preparado
+prepared_clinical_file <- file.path(data_dir, "prepared", "clinical_data_TCGA_KIRC.rds")
+clinical_data <- readRDS(prepared_clinical_file)
+
+# Mostrar un resumen de los datos clínicos
+glimpse(clinical_data)
+```
+
+La exploración inicial mostró que el conjunto de datos clínicos está compuesto por **537 observaciones**, correspondientes a los pacientes, y **95 variables** clínicas y demográficas, lo que refleja la amplia variedad de información disponible en el proyecto TCGA-KIRC. Entre las variables identificadas se encuentran datos relacionados con el diagnóstico tumoral, estadio clínico, grado histológico, supervivencia, antecedentes clínicos, tratamientos recibidos y características demográficas de los pacientes.
+
+Asimismo, se observó la coexistencia de distintos tipos de datos (`chr`, `int`, `dbl` y `lgl`), lo cual es algo habitual en este tipo de conjuntos. También se detectó la presencia de múltiples valores ausentes (NA) en determinadas variables, especialmente en aquellas relacionadas con seguimiento clínico y tratamientos específicos. 
+
+### Evaluación del patrón de valores faltantes
+
+A raíz de estas observaciones, se llevó a cabo un análisis específico de la distribución de los datos faltantes en el conjunto de datos clínicos con el fin de evaluar su patrón de aparición y determinar la estrategia más adecuada para su tratamiento. 
+
+Para ello, primero se creó una tabla que indica si los datos están presentes o ausentes en cada variable y observación mediante `is.na()`. Después, se calculó el porcentaje de datos faltantes de cada variable y estas se ordenaron de menor a mayor cantidad de valores ausentes. Así, es más fácil identificar qué variables están casi completas y cuáles presentan una mayor cantidad de datos faltantes. Finalmente, esta información se representó mediante un *heatmap* empleando el paquete `ggplot2`, donde cada fila representa una variable clínica y cada columna una observación del conjunto de datos.
+
+
+```{r missingness-heatmap-theme}
+# Cargar librerías necesarias
+library(ggplot2)
+
+# Definir un tema personalizado para el heatmap
+missingness_heatmap_theme <- theme(
+  panel.background = element_rect(fill = "white", color = NA),
+  plot.background = element_rect(fill = "white", color = NA),
+  plot.subtitle = element_text(size = 11, hjust = 0.5),
+  axis.text.x = element_text(size = 8),
+  axis.text.y = element_text(size = 5.2, hjust = 1),
+  axis.title = element_text(size = 11, face = "bold"),
+  panel.grid = element_blank(),
+  legend.position = "bottom",
+  legend.title = element_blank(),
+  legend.text = element_text(size = 9),
+  legend.key.size = grid::unit(0.35, "cm"),
+  plot.margin = margin(6, 10, 6, 6)
+)
+```
+
+```{r missingness-heatmap-code, results='hide'}
+# Cargar librerías necesarias
+library(ggplot2)
+
+# Crear una matriz que indique si los datos están presentes o ausentes
+missing_matrix <- is.na(clinical_data)
+
+# Calcular el porcentaje de datos faltantes por variable y ordenarlas
+missing_percentage_by_variable <- sort(colMeans(missing_matrix) * 100)
+ordered_variables <- names(missing_percentage_by_variable)
+short_variable_names <- gsub("_", " ", ordered_variables)
+short_variable_names <- ifelse(
+  nchar(short_variable_names) > 28,
+  paste0(substr(short_variable_names, 1, 25), "..."),
+  short_variable_names
+)
+variable_labels <- paste0(
+  short_variable_names,
+  " (", round(missing_percentage_by_variable), "%)"
+)
+
+# Crear un data frame para el heatmap
+missingness_heatmap_data <- expand.grid(
+  observation = seq_len(nrow(clinical_data)),
+  variable = factor(ordered_variables, levels = ordered_variables)
+)
+missingness_heatmap_data$is_missing <- as.vector(missing_matrix[, ordered_variables])
+
+missing_percentage <- mean(missingness_heatmap_data$is_missing) * 100
+present_percentage <- 100 - missing_percentage
+
+# Crear el heatmap de valores faltantes
+missingness_plot <- ggplot(missingness_heatmap_data, aes(observation, variable, fill = is_missing)) +
+  geom_raster() +
+  scale_x_continuous(breaks = seq(0, 500, by = 100), expand = c(0, 0)) +
+  scale_y_discrete(
+    labels = setNames(variable_labels, ordered_variables),
+    expand = expansion(mult = c(0, 0))
+  ) +
+  scale_fill_manual(
+    values = c("FALSE" = "grey92", "TRUE" = "#0B7285"),
+    labels = c(
+      "FALSE" = sprintf("Presente (%.1f%%)", present_percentage),
+      "TRUE" = sprintf("Faltante (%.1f%%)", missing_percentage)
+    )
+  ) +
+  labs(
+    subtitle = paste0(nrow(clinical_data), " observaciones × ", ncol(clinical_data), " variables"),
+    x = "Observaciones",
+    y = "Variables"
+  ) +
+  theme_minimal(base_size = 12) +
+  missingness_heatmap_theme
+```
+
+```{r missingness-heatmap-figure, fig.cap="Patrón de valores faltantes en las variables clínicas del conjunto TCGA-KIRC. La leyenda indica el porcentaje total de valores presentes y faltantes.", fig.align='center', fig.width=8.4, fig.height=12.6, out.width='92%', out.height='0.95\\textheight', fig.pos='!htbp', dev='png', dpi=400}
+# Mostrar el heatmap de valores faltantes
+missingness_plot
+```
+
+A la vista de los resultados observados en el *heatmap* de la Figura \ref{fig:missingness-heatmap-figure} una, es posible determinar que existen variables que presentan una proporción muy elevada de valores ausentes, alcanzando incluso el 100 \% en algunos casos. Este comportamiento es consistente con la estructura del esquema clínico del GDC, que contempla un amplio conjunto de variables potenciales para la caracterización clínica de los pacientes. Sin embargo, la disponibilidad de esta información no es homogénea entre todos los individuos ni entre los distintos proyectos integrados en TCGA. Concretamente, en el cohorte TCGA-KIRC, los valores faltantes se concentraron principalmente en variables relacionadas con tratamientos, seguimiento clínico y antecedentes del paciente.
+
+\FloatBarrier
+
+Por ello, antes de realizar análisis posteriores, es necesario establecer una estrategia de tratamiento de datos faltantes, incluyendo la eliminación de variables con un porcentaje extremo de ausencia y la conservación de aquellas con relevancia clínica directa para los análisis posteriores.
+
+### Filtrado de variables clínicas
+
+En este caso, como primer paso, se decidió eliminar las variables que presentaban más de un 50 % de valores faltantes, ya que aportaban información demasiado incompleta para una parte sustancial del cohorte. Mantener este tipo de variables podría reducir la robustez de los análisis posteriores y dificultar la interpretación de los resultados. No obstante, se conservó de forma expresa la variable `days_to_death`, a pesar de superar dicho umbral, por su interés clínico en el análisis de supervivencia. En cambio, las variables `days_to_last_follow_up` y `vital_status`, también de interés en el análisis de supervivencia, no requirieron ninguna excepción, ya que no superaban el umbral de ausencia y, por tanto, permanecieron en el conjunto filtrado de forma automática.
+
+````{r missingness-treatment-code}
+# Definir un umbral para eliminar variables con alto porcentaje de valores faltantes
+threshold <- 0.5
+
+# Variable que se conserva por su relevancia clínica
+protected_variable <- "days_to_death"
+
+# Variables con NA > 50%
+variables_high_na <- names(
+  missing_percentage_by_variable[
+    missing_percentage_by_variable > threshold * 100
+  ]
+)
+
+# Eliminar excepto las variables críticas
+variables_to_remove <- setdiff(
+  variables_high_na,
+  protected_variable
+)
+
+# Variables finales
+variables_to_keep <- setdiff(
+  names(clinical_data),
+  variables_to_remove
+)
+
+clinical_data_filtered <- clinical_data[, variables_to_keep]
+
+# Mostrar variable protegida
+cat("Variable conservada a pesar del umbral de NA:\n")
+print(protected_variable)
+
+# Mostrar variables eliminadas
+cat("\nVariables eliminadas:\n")
+print(variables_to_remove)
+
+# Mostrar variables conservadas
+cat("\nVariables conservadas:\n")
+print(variables_to_keep)
+
+# Mostrar número total de variables
+cat("\nNúmero total de variables originales:", ncol(clinical_data), "\n")
+cat("Número de variables eliminadas:", length(variables_to_remove), "\n")
+cat("Número de variables conservadas:", ncol(clinical_data_filtered), "\n")
+````
+
+Tras aplicar este criterio de filtrado, el número de variables clínicas se redujo de 95 a 40, eliminándose 55 variables con un porcentaje de valores ausentes superior al 50 \%. En términos generales, las variables descartadas correspondieron principalmente a información de tratamientos, radioterapia, hábitos tóxicos y determinados campos de seguimiento con escasa disponibilidad en el cohorte. Por el contrario, en el conjunto final se conservaron las variables clínicas y anatomopatológicas con mayor completitud, así como las variables clave para supervivencia.
+
+\newpage
+
+# Análisis de los datos transcriptómicos
+
+\newpage
+
+# Conclusiones
 
 ::: {#refs}
 :::
