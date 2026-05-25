@@ -6,6 +6,8 @@
 \usepackage{caption}
 \usepackage{fancyhdr}
 \usepackage{float}
+\usepackage{booktabs}
+\usepackage{placeins}
 \usepackage{fvextra}
 \usepackage{array}
 \usepackage{hyperref}
@@ -34,13 +36,19 @@
 
 \raggedbottom
 
-\DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,commandchars=\\\{\}}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{%
+    breaklines,
+    breakanywhere,
+    fontsize=\normalsize,
+    commandchars=\\\{\}
+}
+\fvset{breaklines=true, breakanywhere=true}
 
 \definecolor{uocblue}{RGB}{0,102,153}
 
 % Formato de captions
-\captionsetup[figure]{labelfont=bf,labelsep=period}
-\captionsetup[table]{labelfont=bf,labelsep=period}
+\captionsetup[figure]{labelfont=bf,labelsep=period,font=small}
+\captionsetup[table]{labelfont=bf,labelsep=period,font=small}
 \addto\captionsspanish{\renewcommand{\tablename}{Tabla}}
 
 % Estilo de cabeceras
