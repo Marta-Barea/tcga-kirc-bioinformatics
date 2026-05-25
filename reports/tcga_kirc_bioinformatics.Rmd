@@ -9,16 +9,25 @@ output:
     number_sections: true
     highlight: tango
     latex_engine: xelatex
+    citation_package: biblatex
     keep_tex: false
     includes:
       in_header: preamble.tex
   word_document:
     toc: true
     toc_depth: '3'
+bibliography: references.bib
+biblio-title: Bibliografía
+biblatexoptions:
+  - style=apa
+  - citestyle=numeric-comp
+  - sorting=none
+  - language=spanish
+link-citations: true
 classoption: twoside
 geometry: top=2.5cm, bottom=2.5cm, left=2.5cm, right=2.5cm
 fontsize: 11pt
-lang: es
+lang: es-ES
 ---
 
 \clearpage
@@ -37,13 +46,11 @@ knitr::opts_chunk$set(warning = FALSE, message = FALSE, tidy = FALSE)
 
 \newpage
 
-# Adquisición y procesamiento de datos
-
-## Acceso y exploración de los datos TCGA-KIRC
+# Adquisición de datos
 
 Antes de realizar cualquier análisis bioinformático, es fundamental disponer de un conjunto de datos adecuado y correctamente organizado. En este tipo de estudios, una parte importante del trabajo inicial consiste en localizar, descargar y preparar los datos que posteriormente serán utilizados en los análisis.
 
-En este contexto, se trabajó con los datos del proyecto **TCGA-KIRC**, disponibles en el repositorio **Genomic Data Commons (GDC)** del **National Cancer Institute (NCI)**. Para acceder y gestionar esta información se utilizó el paquete **TCGAbiolinks**, desarrollado para el entorno **R/Bioconductor**, el cual facilita la consulta, descarga e integración de datos procedentes del proyecto **TCGA**.
+En este contexto, se trabajó con los datos del proyecto **TCGA-KIRC**, disponibles en el repositorio **Genomic Data Commons (GDC)** del **National Cancer Institute (NCI)**. Para acceder y gestionar esta información se utilizó el paquete `TCGAbiolinks`, desarrollado para el entorno R/Bioconductor, el cual facilita la consulta, descarga e integración de datos procedentes del proyecto **TCGA**.
 
 Como primer paso, se realizó una consulta general del proyecto con el fin de explorar, dentro del repositorio **GDC**, la disponibilidad del proyecto **TCGA-KIRC** y comprender cómo se encontraban organizados dentro del mismo. 
 
@@ -139,24 +146,26 @@ En el caso de la transcriptómica, dentro de GDC se seleccionó la opción **Gen
 
 Además, se escogió el flujo de trabajo **STAR - Counts** porque genera recuentos de lectura por gen a partir de un pipeline estandarizado del propio GDC. Esta elección permite partir de una matriz de recuentos homogénea entre muestras, algo especialmente importante cuando después se quieren aplicar métodos de normalización, análisis de expresión diferencial o visualizaciones globales del transcriptoma. En otras palabras, se priorizó una salida que fuera directamente útil para el análisis y que, al mismo tiempo, mantuviera un procesamiento consistente entre todas las muestras del proyecto.
 
-Para obtener estos datos se utilizó el paquete **TCGAbiolinks**. En concreto, `GDCquery()` se empleó para definir la búsqueda de los archivos transcriptómicos del proyecto, `GDCdownload()` para descargarlos en local y `GDCquery_clinic()` para recuperar la información clínica de los pacientes. Con estas funciones fue posible reunir, de forma ordenada, los datos que posteriormente se utilizarán en los análisis.
+Para obtener estos datos se utilizó el paquete `TCGAbiolinks`. En concreto, `GDCquery()` se empleó para definir la búsqueda de los archivos transcriptómicos del proyecto, `GDCdownload()` para descargarlos en local, `GDCprepare()` para integrarlos en un objeto preparado para el análisis y `GDCquery_clinic()` para recuperar la información clínica de los pacientes. Con estas funciones fue posible reunir y preparar, de forma ordenada, los datos que posteriormente se utilizarán en los análisis [@tcgabiolinks_download_prepare]. 
 
-La parte de descarga se trasladó a un script externo, `scripts/download_tcga_kirc_data.R`, para mantener separado el proceso de adquisición de datos del proceso de análisis. Esta decisión resulta útil porque evita que, cada vez que se renderiza el documento, se vuelva a lanzar la descarga desde GDC, algo que puede ralentizar bastante la compilación del informe.
+La parte de descarga y preparación del objeto se trasladó a un script externo, contenido en el directorio `scripts/`. Esta decisión se tomó con el fin de evitar que, cada vez que se renderiza el documento, se vuelva a lanzar la descarga desde GDC, algo que puede ralentizar bastante la compilación del informe.
 
-El script se ejecuta una única vez desde la raíz del proyecto con el siguiente comando:
+En este sentido, el script se ejecuta una única vez desde la raíz del proyecto con el siguiente comando:
 
 ```{r, eval=FALSE}
 system("Rscript scripts/download_tcga_kirc_data.R")
 ```
 
-A continuación se muestra el contenido del script. Se incluye aquí únicamente con fines documentales, pero no se ejecuta dentro del propio RMarkdown para evitar que el renderizado del informe vuelva a iniciar la descarga.
+A continuación se muestra el contenido del script. Se incluye aquí únicamente con fines documentales, pero no se ejecuta dentro del propio RMarkdown para evitar, como se ha mencionado anteriromente, que el renderizado del informe vuelva a iniciar la descarga.
 
 ```{r, echo=FALSE, results='asis'}
+# Mostrar el contenido del script de descarga
 script_candidates <- c(
   "../scripts/download_tcga_kirc_data.R",
   "scripts/download_tcga_kirc_data.R"
 )
 
+# Buscar el script en las posibles ubicaciones
 script_path <- script_candidates[file.exists(script_candidates)][1]
 
 if (is.na(script_path)) {
@@ -166,9 +175,70 @@ if (is.na(script_path)) {
   )
 }
 
+# Mostrar el contenido del script
 cat("```r\n")
 cat(readLines(script_path, warn = FALSE), sep = "\n")
 cat("\n```\n")
 ```
 
-Una vez ejecutado el script, los archivos quedan almacenados en la carpeta **data** del repositorio. A partir de ese momento, ya no es necesario volver a ejecutar la descarga para esta parte del documento. En su lugar, puede mostrarse directamente qué contenido se ha guardado en disco, cuántos archivos se han obtenido, en qué formato están y cuánto espacio ocupan.
+Una vez ejecutado el script, los archivos quedan almacenados en el directorio `data/` del repositorio del proyecto. A continuación, se muestra un resumen de las carpetas principales generadas, el espacio que ocupan y el tipo de contenido almacenado en cada una.
+
+```{r}
+# Ruta al directorio de datos
+project_dir <- getwd()
+
+if (basename(project_dir) == "reports") {
+  project_dir <- dirname(project_dir)
+} else if (basename(project_dir) == "data") {
+  project_dir <- dirname(project_dir)
+}
+
+data_dir <- file.path(project_dir, "data")
+
+# Obtener las carpetas principales dentro del directorio data
+top_level_dirs <- list.dirs(data_dir, recursive = FALSE, full.names = TRUE)
+
+# Crear una tabla resumen de las carpetas principales
+files_table <- do.call(
+  rbind,
+  lapply(top_level_dirs, function(dir_path) {
+    dir_files <- list.files(dir_path, recursive = TRUE, full.names = TRUE)
+    dir_files <- dir_files[file.info(dir_files)$isdir %in% FALSE]
+    dir_info <- if (length(dir_files) > 0) file.info(dir_files) else NULL
+    dir_size_mb <- if (is.null(dir_info)) 0 else round(sum(dir_info$size, na.rm = TRUE) / (1024 * 1024), 2)
+    dir_extensions <- tools::file_ext(dir_files)
+    dir_extensions[dir_extensions == ""] <- "sin_extension"
+    format_counts <- sort(table(dir_extensions), decreasing = TRUE)
+    format_summary <- if (length(format_counts) == 0) {
+      "Sin archivos"
+    } else {
+      paste(sprintf("%s (%d)", names(format_counts), as.integer(format_counts)), collapse = ", ")
+    }
+    subdirs <- list.dirs(dir_path, recursive = TRUE, full.names = FALSE)
+    subdir_count <- sum(nzchar(subdirs))
+
+    data.frame(
+      Carpeta = basename(dir_path),
+      Size_MB = dir_size_mb,
+      Archivos = length(dir_files),
+      Formatos = format_summary,
+      Subcarpetas = subdir_count,
+      stringsAsFactors = FALSE
+    )
+  })
+)
+
+# Mostrar la tabla resumen
+knitr::kable(files_table, caption = "Resumen de las carpetas principales del directorio data")
+```
+
+Como se puede comproibar en la Tabla 2, el directorio `data/` contiene tres subcarpetas principales: `clinical/`, `prepared/` y `transcriptome/`. Cada una de ellas tiene un tamaño y un tipo de contenido diferente, aunque todas están relacionadas con los datos del proyecto **TCGA-KIRC**.
+
+En particular, la carpeta `clinical/` contiene los archivos asociados a la información clínica de los pacientes y está compuesta por un único archivo en formato `.tsv`, sin subdirectorios adicionales. Por otro lado, `transcriptome/` incluye los datos de expresión génica obtenidos mediante tecnologías de RNA-Seq, incluyendo un total de 614 archivos en formato `.tsv` distribuidos en 617 subcarpetas. Finalmente, el directorio `prepared/` reúne los objetos previamente procesados y estructurados para su posterior análisis, tales como matrices de recuentos y data frames clínicos preparados para su utilización directa. Este directorio no contiene subcarpetas y únicamente incluye dos archivos en formato `.rds`.
+
+En las secciones siguientes se abordará el procesamiento y análisis de los datos obtenidos. A partir de este punto, el estudio se centrará exclusivamente en los archivos contenidos en el directorio `data/prepared/`.
+
+\newpage
+
+::: {#refs}
+:::

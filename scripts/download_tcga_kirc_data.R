@@ -2,6 +2,14 @@ suppressPackageStartupMessages({
   library(TCGAbiolinks)
 })
 
+cleanup_files <- function(paths) {
+  existing_paths <- paths[file.exists(paths)]
+
+  if (length(existing_paths) > 0) {
+    invisible(file.remove(existing_paths))
+  }
+}
+
 project_dir <- getwd()
 
 if (basename(project_dir) == "scripts") {
@@ -11,10 +19,23 @@ if (basename(project_dir) == "scripts") {
 data_dir <- file.path(project_dir, "data")
 transcriptome_dir <- file.path(data_dir, "transcriptome")
 clinical_dir <- file.path(data_dir, "clinical")
+prepared_dir <- file.path(data_dir, "prepared")
 clinical_file <- file.path(clinical_dir, "clinical_data_TCGA_KIRC.tsv")
+prepared_file <- file.path(prepared_dir, "tcga_kirc_star_counts_se.rds")
+prepared_clinical_file <- file.path(prepared_dir, "clinical_data_TCGA_KIRC.rds")
+auxiliary_rds_root <- file.path(project_dir, c("df.rds", "results.rds"))
+auxiliary_rds_prepared <- file.path(prepared_dir, c("df.rds", "results.rds"))
 
 dir.create(transcriptome_dir, recursive = TRUE, showWarnings = FALSE)
 dir.create(clinical_dir, recursive = TRUE, showWarnings = FALSE)
+dir.create(prepared_dir, recursive = TRUE, showWarnings = FALSE)
+
+query_exp <- GDCquery(
+  project = "TCGA-KIRC",
+  data.category = "Transcriptome Profiling",
+  data.type = "Gene Expression Quantification",
+  workflow.type = "STAR - Counts"
+)
 
 transcriptome_files <- list.files(
   transcriptome_dir,
@@ -24,13 +45,6 @@ transcriptome_files <- list.files(
 )
 
 if (length(transcriptome_files) == 0) {
-  query_exp <- GDCquery(
-    project = "TCGA-KIRC",
-    data.category = "Transcriptome Profiling",
-    data.type = "Gene Expression Quantification",
-    workflow.type = "STAR - Counts"
-  )
-
   GDCdownload(
     query = query_exp,
     method = "api",
@@ -39,6 +53,24 @@ if (length(transcriptome_files) == 0) {
   )
 } else {
   message("Los archivos transcriptómicos ya están disponibles.")
+}
+
+if (!file.exists(prepared_file)) {
+  old_wd <- getwd()
+  on.exit(setwd(old_wd), add = TRUE)
+  setwd(prepared_dir)
+
+  prepared_data <- GDCprepare(
+    query = query_exp,
+    directory = transcriptome_dir
+  )
+
+  cleanup_files(auxiliary_rds_prepared)
+  cleanup_files(auxiliary_rds_root)
+
+  saveRDS(prepared_data, file = prepared_file)
+} else {
+  message("El objeto transcriptómico preparado ya está disponible.")
 }
 
 if (!file.exists(clinical_file)) {
@@ -57,3 +89,19 @@ if (!file.exists(clinical_file)) {
 } else {
   message("El archivo clínico ya está disponible.")
 }
+
+if (!file.exists(prepared_clinical_file)) {
+  if (!exists("clinical_data")) {
+    clinical_data <- read.delim(
+      clinical_file,
+      sep = "\t",
+      check.names = FALSE
+    )
+  }
+
+  saveRDS(clinical_data, file = prepared_clinical_file)
+} else {
+  message("El objeto clínico preparado ya está disponible.")
+}
+
+cleanup_files(auxiliary_rds_root)
