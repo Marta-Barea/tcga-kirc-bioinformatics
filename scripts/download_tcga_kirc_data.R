@@ -1,7 +1,9 @@
+# Carga las librerias necesarias
 suppressPackageStartupMessages({
   library(TCGAbiolinks)
 })
 
+# Función para eliminar archivos si existen
 cleanup_files <- function(paths) {
   existing_paths <- paths[file.exists(paths)]
 
@@ -10,6 +12,7 @@ cleanup_files <- function(paths) {
   }
 }
 
+# Establece los directorios y rutas de archivos
 project_dir <- getwd()
 
 if (basename(project_dir) == "scripts") {
@@ -26,10 +29,12 @@ prepared_clinical_file <- file.path(prepared_dir, "clinical_data_TCGA_KIRC.rds")
 auxiliary_rds_root <- file.path(project_dir, c("df.rds", "results.rds"))
 auxiliary_rds_prepared <- file.path(prepared_dir, c("df.rds", "results.rds"))
 
+# Crea los directorios necesarios si no existen
 dir.create(transcriptome_dir, recursive = TRUE, showWarnings = FALSE)
 dir.create(clinical_dir, recursive = TRUE, showWarnings = FALSE)
 dir.create(prepared_dir, recursive = TRUE, showWarnings = FALSE)
 
+# Define la consulta para los datos transcriptómicos
 query_exp <- GDCquery(
   project = "TCGA-KIRC",
   data.category = "Transcriptome Profiling",
@@ -44,6 +49,7 @@ transcriptome_files <- list.files(
   full.names = TRUE
 )
 
+# Descarga los datos transcriptómicos si no están disponibles
 if (length(transcriptome_files) == 0) {
   GDCdownload(
     query = query_exp,
@@ -55,6 +61,7 @@ if (length(transcriptome_files) == 0) {
   message("Los archivos transcriptómicos ya están disponibles.")
 }
 
+# Prepara los datos transcriptómicos y guarda los objetos preparados
 if (!file.exists(prepared_file)) {
   old_wd <- getwd()
   on.exit(setwd(old_wd), add = TRUE)
@@ -73,6 +80,7 @@ if (!file.exists(prepared_file)) {
   message("El objeto transcriptómico preparado ya está disponible.")
 }
 
+# Descarga los datos clínicos si no están disponibles
 if (!file.exists(clinical_file)) {
   clinical_data <- GDCquery_clinic(
     project = "TCGA-KIRC",
@@ -90,6 +98,7 @@ if (!file.exists(clinical_file)) {
   message("El archivo clínico ya está disponible.")
 }
 
+# Prepara los datos clínicos y carda el objeto preparado
 if (!file.exists(prepared_clinical_file)) {
   if (!exists("clinical_data")) {
     clinical_data <- read.delim(
