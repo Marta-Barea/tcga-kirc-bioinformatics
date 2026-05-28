@@ -65,7 +65,7 @@ Como primer paso, se realizó una consulta general del proyecto con el fin de ex
 
 A continuación, se muestran los pasos realizados, así como el código correspondiente, durante esta fase inicial de exploración.
 
-```{r} 
+```{r gdc-exploration-code} 
 # Cargar librerías necesarias
 library(TCGAbiolinks)
 library(SummarizedExperiment)
@@ -275,7 +275,7 @@ Como parte inicial del estudio, se realizó un análisis exploratorio inicial co
 
 Para ello, se cargó el objeto clínico en formato `.rds` previamente procesado y se empleó la función `glimpse()` del paquete `dplyr`, la cual ofrece una visualización resumida de la estructura interna del *data frame*.
 
-```{r}
+```{r clinical-data-glimpse-code}
 # Cargar librerías necesarias
 library(dplyr)
 
@@ -379,13 +379,13 @@ missingness_plot <- ggplot(missingness_heatmap_data, aes(observation, variable, 
 missingness_plot
 ```
 
-A la vista de los resultados observados en el *heatmap* de la Figura \ref{fig:missingness-heatmap-figure} una, es posible determinar que existen variables que presentan una proporción muy elevada de valores ausentes, alcanzando incluso el 100 \% en algunos casos. Este comportamiento es consistente con la estructura del esquema clínico del GDC, que contempla un amplio conjunto de variables potenciales para la caracterización clínica de los pacientes. Sin embargo, la disponibilidad de esta información no es homogénea entre todos los individuos ni entre los distintos proyectos integrados en TCGA. Concretamente, en el cohorte TCGA-KIRC, los valores faltantes se concentraron principalmente en variables relacionadas con tratamientos, seguimiento clínico y antecedentes del paciente.
+A la vista de los resultados observados en el *heatmap* de la Figura \ref{fig:missingness-heatmap-figure}, es posible determinar que existen variables que presentan una proporción muy elevada de valores ausentes, alcanzando incluso el 100 \% en algunos casos. Este comportamiento es consistente con la estructura del esquema clínico del GDC, que contempla un amplio conjunto de variables potenciales para la caracterización clínica de los pacientes. Sin embargo, la disponibilidad de esta información no es homogénea entre todos los individuos ni entre los distintos proyectos integrados en TCGA. Concretamente, en el cohorte TCGA-KIRC, los valores faltantes se concentraron principalmente en variables relacionadas con tratamientos, seguimiento clínico y antecedentes del paciente.
 
 \FloatBarrier
 
 Por ello, antes de realizar análisis posteriores, es necesario establecer una estrategia de tratamiento de datos faltantes, incluyendo la eliminación de variables con un porcentaje extremo de ausencia y la conservación de aquellas con relevancia clínica directa para los análisis posteriores.
 
-### Filtrado de variables clínicas
+### Filtrado de variables con alto porcentaje de valores faltantes
 
 En este caso, como primer paso, se decidió eliminar las variables que presentaban más de un 50 % de valores faltantes, ya que aportaban información demasiado incompleta para una parte sustancial del cohorte. Mantener este tipo de variables podría reducir la robustez de los análisis posteriores y dificultar la interpretación de los resultados. No obstante, se conservó de forma expresa la variable `days_to_death`, a pesar de superar dicho umbral, por su interés clínico en el análisis de supervivencia. En cambio, las variables `days_to_last_follow_up` y `vital_status`, también de interés en el análisis de supervivencia, no requirieron ninguna excepción, ya que no superaban el umbral de ausencia y, por tanto, permanecieron en el conjunto filtrado de forma automática.
 
@@ -436,6 +436,69 @@ cat("Número de variables conservadas:", ncol(clinical_data_filtered), "\n")
 ````
 
 Tras aplicar este criterio de filtrado, el número de variables clínicas se redujo de 95 a 40, eliminándose 55 variables con un porcentaje de valores ausentes superior al 50 \%. En términos generales, las variables descartadas correspondieron principalmente a información de tratamientos, radioterapia, hábitos tóxicos y determinados campos de seguimiento con escasa disponibilidad en el cohorte. Por el contrario, en el conjunto final se conservaron las variables clínicas y anatomopatológicas con mayor completitud, así como las variables clave para supervivencia.
+
+Una vez aplicado el filtrado de variables con alto porcentaje de valores faltantes, se procedió a realizar un nuevo análisis de la distribución de los datos faltantes en el conjunto clínico filtrado. Este análisis permitió evaluar cómo había cambiado el patrón de valores ausentes tras la eliminación de las variables más incompletas y confirmar que el conjunto resultante presentaba una mayor calidad y consistencia. 
+
+```{r missingness-summary-code}
+# Cargar librerías necesarias
+library(tidyr)
+library(dplyr)
+library(tibble)
+
+# Calcular porcentaje de valores faltantes por variable
+missing_summary <- clinical_data_filtered %>%
+  summarise(across(everything(), ~ mean(is.na(.)))) %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = "variable",
+    values_to = "missing_pct"
+  ) %>%
+  arrange(desc(missing_pct)) %>%
+  mutate(missing_pct = round(missing_pct * 100, 2))
+
+# Mostrar resultados
+print(missing_summary, n = Inf)
+```
+
+Tal y como se muestra en el resumen de la tabla anterior, tras el filtrado de variables con alto porcentaje de valores faltantes, el conjunto clínico resultante presenta una mayor calidad y consistencia. En este nuevo conjunto filtrado, la mayoría de las variables presentan un porcentaje de valores ausentes inferior al 10 \%.
+
+No obstante, se ha decidido conservar la variable `days_to_death`, a pesar de su elevado porcentaje de valores faltantes, debido a su relevancia clínica en el análisis de supervivencia. En este contexto, los valores NA en dicha variable son esperables, ya que corresponden a pacientes que no han fallecido durante el periodo de seguimiento, es decir, individuos que no han presentado el evento de interés. Estos casos serán tratados posteriormente como observaciones censuradas en el análisis de supervivencia.
+
+### Filtrado de variables administrativas, identificadores únicos y metadatos no relevantes para el análisis
+
+Además del filtrado de variables con alto porcentaje de valores faltantes, se decidió eliminar aquellas variables que, aunque no presentaban un elevado porcentaje de NA, correspondían a información administrativa o de identificación, como `submitter_id`, `diagnosis_id`, `exposure_id`, `demographic_id`, `bcr_patient_barcode`, `updated_datetime` y `project`, debido a que no aportan información clínica o biológica relevante para el análisis de supervivencia y podrían introducir redundancia o ruido.
+
+```{r administrative-filtering-code}
+# Definir variables administrativas a eliminar
+variables_to_remove <- c(
+  "submitter_id",
+  "diagnosis_id",
+  "exposure_id",
+  "demographic_id",
+  "bcr_patient_barcode",
+  "updated_datetime",
+  "project",
+  "state",
+  "days_to_birth",
+  "age_at_index"
+)
+
+# Eliminar variables administrativas
+clinical_data_filtered <- clinical_data_filtered[, setdiff(names(clinical_data_filtered), variables_to_remove)]
+
+# Mostrar variables eliminadas
+cat("Variables administrativas eliminadas:\n")
+print(variables_to_remove)
+
+# Mostrar número total de variables después del filtrado administrativo
+cat("\nNúmero total de variables después del filtrado administrativo:", ncol(clinical_data_filtered), "\n")
+print(names(clinical_data_filtered))
+```
+
+Tras la eliminación de variables administrativas, identificadores únicos y metadatos no relevantes para el estudio, el conjunto clínico final quedó reducido a 30 variables, conservando únicamente aquellas con potencial interés clínico y utilidad para los posteriores análisis.
+
+### Imputación de valores faltantes
+
 
 \newpage
 
