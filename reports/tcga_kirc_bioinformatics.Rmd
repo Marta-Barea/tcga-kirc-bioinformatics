@@ -289,7 +289,7 @@ glimpse(clinical_data)
 
 La exploración inicial mostró que el conjunto de datos clínicos está compuesto por **537 observaciones**, correspondientes a los pacientes, y **95 variables** clínicas y demográficas, lo que refleja la amplia variedad de información disponible en el proyecto TCGA-KIRC. Entre las variables identificadas se encuentran datos relacionados con el diagnóstico tumoral, estadio clínico, grado histológico, supervivencia, antecedentes clínicos, tratamientos recibidos y características demográficas de los pacientes.
 
-Asimismo, se observó la coexistencia de distintos tipos de datos (`chr`, `int`, `dbl` y `lgl`), lo cual es algo habitual en este tipo de conjuntos. También se detectó la presencia de múltiples valores ausentes (NA) en determinadas variables, especialmente en aquellas relacionadas con seguimiento clínico y tratamientos específicos. 
+Asimismo, se observó la coexistencia de distintos tipos de datos (`chr`, `int`, `dbl` y `lgl`), lo cual es algo habitual en este tipo de conjuntos. También se detectó la presencia de múltiples valores ausentes (NA) en determinadas variables, especialmente en aquellas relacionadas con seguimiento clínico y tratamientos específicos.
 
 ### Evaluación del patrón de valores faltantes
 
@@ -374,7 +374,7 @@ missingness_plot <- ggplot(missingness_heatmap_data, aes(observation, variable, 
   missingness_heatmap_theme
 ```
 
-```{r missingness-heatmap-figure, fig.cap="Patrón de valores faltantes en las variables clínicas del conjunto TCGA-KIRC. La leyenda indica el porcentaje total de valores presentes y faltantes.", fig.align='center', fig.width=8.4, fig.height=12.6, out.width='92%', out.height='0.95\\textheight', fig.pos='!htbp', dev='png', dpi=400}
+```{r missingness-heatmap-figure, fig.cap="Patrón de valores faltantes en las variables clínicas del conjunto TCGA-KIRC. La leyenda indica el porcentaje total de valores presentes y faltantes.", fig.align='center', fig.width=8.2, fig.height=12.1, out.width='90%', out.height='0.92\\textheight', fig.pos='!htbp', dev='png', dpi=400}
 # Mostrar el heatmap de valores faltantes
 missingness_plot
 ```
@@ -385,7 +385,9 @@ A la vista de los resultados observados en el *heatmap* de la Figura \ref{fig:mi
 
 Por ello, antes de realizar análisis posteriores, es necesario establecer una estrategia de tratamiento de datos faltantes, incluyendo la eliminación de variables con un porcentaje extremo de ausencia y la conservación de aquellas con relevancia clínica directa para los análisis posteriores.
 
-### Filtrado de variables con alto porcentaje de valores faltantes
+### Peparación de los datos clínicos
+
+#### Filtrado de variables con alto porcentaje de valores faltantes
 
 En este caso, como primer paso, se decidió eliminar las variables que presentaban más de un 50 % de valores faltantes, ya que aportaban información demasiado incompleta para una parte sustancial del cohorte. Mantener este tipo de variables podría reducir la robustez de los análisis posteriores y dificultar la interpretación de los resultados. No obstante, se conservó de forma expresa la variable `days_to_death`, a pesar de superar dicho umbral, por su interés clínico en el análisis de supervivencia. En cambio, las variables `days_to_last_follow_up` y `vital_status`, también de interés en el análisis de supervivencia, no requirieron ninguna excepción, ya que no superaban el umbral de ausencia y, por tanto, permanecieron en el conjunto filtrado de forma automática.
 
@@ -464,7 +466,7 @@ Tal y como se muestra en el resumen de la tabla anterior, tras el filtrado de va
 
 No obstante, se ha decidido conservar la variable `days_to_death`, a pesar de su elevado porcentaje de valores faltantes, debido a su relevancia clínica en el análisis de supervivencia. En este contexto, los valores NA en dicha variable son esperables, ya que corresponden a pacientes que no han fallecido durante el periodo de seguimiento, es decir, individuos que no han presentado el evento de interés. Estos casos serán tratados posteriormente como observaciones censuradas en el análisis de supervivencia.
 
-### Filtrado de variables administrativas, identificadores únicos y metadatos no relevantes para el análisis
+#### Filtrado de variables administrativas, identificadores únicos y metadatos no relevantes para el análisis
 
 Además del filtrado de variables con alto porcentaje de valores faltantes, se decidió eliminar aquellas variables que, aunque no presentaban un elevado porcentaje de NA, correspondían a información administrativa o de identificación, como `submitter_id`, `diagnosis_id`, `exposure_id`, `demographic_id`, `bcr_patient_barcode`, `updated_datetime` y `project`, debido a que no aportan información clínica o biológica relevante para el análisis de supervivencia y podrían introducir redundancia o ruido.
 
@@ -497,7 +499,70 @@ print(names(clinical_data_filtered))
 
 Tras la eliminación de variables administrativas, identificadores únicos y metadatos no relevantes para el estudio, el conjunto clínico final quedó reducido a 30 variables, conservando únicamente aquellas con potencial interés clínico y utilidad para los posteriores análisis.
 
-### Imputación de valores faltantes
+#### Recodificación y tratamiento de los valores faltantes residuales
+
+Una vez completado el filtrado, se revisó de nuevo el patrón de valores ausentes en las variables restantes. Esta inspección mostró una situación heterogénea. Por un lado, `days_to_death` presentaba un elevado porcentaje de NA, pero estos no correspondían a datos perdidos reales, sino a pacientes censurados que seguían vivos en el último seguimiento. Por otro lado, la mayoría de las covariables clínicas conservadas tenían porcentajes de ausencia muy bajos, generalmente inferiores al 1 %, con la excepción de `follow_ups_disease_response`, que presentaba una ausencia moderada.
+
+Por este motivo, se descartó aplicar una estrategia global de imputación sobre todo el conjunto clínico. Además, dicho planteamiento no resultaba coherente con la variable `days_to_birth`, ya que esta había sido eliminada previamente del conjunto analítico por su escasa utilidad interpretativa y por ser redundante frente a `age_at_diagnosis`. En consecuencia, `days_to_birth` no debía formar parte del proceso de tratamiento de los valores ausentes.
+
+En lugar de ello, se optó por una estrategia dirigida y más fácilmente interpretable. Primero, `days_to_death` se recodificó como una variable de evento (`death_event`) y una variable de tiempo de supervivencia (`survival_time`), tratando sus NA como observaciones censuradas. Después, los pocos valores faltantes restantes se trataron de forma específica según el tipo de variable. `age_at_diagnosis`, al presentar una única ausencia, se completó con la mediana. En las variables categóricas `follow_ups_disease_response`, `ajcc_pathologic_stage`, `tumor_grade` y `ajcc_pathologic_m`, los NA se recodificaron explícitamente como categorías no informadas. Para ello se utilizó `Unknown` en `follow_ups_disease_response` y `No disponible` en el resto. De este modo, se evita introducir un tratamiento innecesariamente complejo en un conjunto donde la ausencia residual es limitada y clínicamente interpretable. Además, esta decisión evita confundir los valores ausentes con categorías clínicas válidas ya presentes en los datos originales, como `GX` en `tumor_grade`, que indica que el grado histológico del tumor no pudo ser evaluado, y `MX` en `ajcc_pathologic_m`, que señala que no fue posible determinar la presencia o ausencia de metástasis.
+
+```{r missing-data-treatment-code}
+# Cargar librerías necesarias
+library(dplyr)
+library(tidyr)
+
+# Imputación simple para la variable continua con una única ausencia
+age_at_diagnosis_median <- as.integer(
+  median(clinical_data_filtered$age_at_diagnosis, na.rm = TRUE)
+)
+
+# Recodificar supervivencia y tratar de forma dirigida los NA residuales
+clinical_data_final <- clinical_data_filtered %>%
+  mutate(
+    death_event = if_else(is.na(days_to_death), 0L, 1L),
+    survival_time = if_else(
+      is.na(days_to_death),
+      days_to_last_follow_up,
+      days_to_death
+    ),
+    age_at_diagnosis = if_else(
+      is.na(age_at_diagnosis),
+      age_at_diagnosis_median,
+      age_at_diagnosis
+    ),
+    follow_ups_disease_response = replace_na(
+      follow_ups_disease_response,
+      "Unknown"
+    ),
+    ajcc_pathologic_stage = replace_na(
+      ajcc_pathologic_stage,
+      "No disponible"
+    ),
+    tumor_grade = replace_na(tumor_grade, "No disponible"),
+    ajcc_pathologic_m = replace_na(ajcc_pathologic_m, "No disponible")
+  ) %>%
+  select(-days_to_death)
+
+# Comprobar el resultado del tratamiento de NA
+remaining_missing_summary <- clinical_data_final %>%
+  summarise(across(everything(), ~ sum(is.na(.)))) %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = "variable",
+    values_to = "missing_n"
+  ) %>%
+  filter(missing_n > 0)
+
+cat("Primeras filas de las variables de supervivencia recodificadas:\n")
+print(clinical_data_final %>% select(death_event, survival_time) %>% head())
+
+cat("\nNúmero total de valores faltantes restantes:", sum(is.na(clinical_data_final)), "\n")
+```
+
+### Tratamiento estadístico de los datos clínicos
+
+#### Estadística descriptiva
 
 
 \newpage
