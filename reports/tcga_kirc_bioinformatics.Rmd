@@ -5,7 +5,7 @@ date: "18 de junio de 2026"
 output:
   pdf_document:
     toc: true
-    toc_depth: 3
+    toc_depth: 4
     number_sections: true
     highlight: tango
     latex_engine: xelatex
@@ -15,7 +15,7 @@ output:
       in_header: preamble.tex
   word_document:
     toc: true
-    toc_depth: '3'
+    toc_depth: '4'
 bibliography: references.bib
 biblio-title: Bibliografía
 biblatexoptions:
