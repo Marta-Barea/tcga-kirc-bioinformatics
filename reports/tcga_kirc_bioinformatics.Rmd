@@ -269,7 +269,7 @@ cat("\n\\end{table}\n")
 cat("\\FloatBarrier\n")
 ```
 
-Como se puede comprobar en la Tabla \ref{tab:data-directory-summary}, el directorio `data/` contiene tres subcarpetas principales: `clinical/`, `prepared/` y `transcriptome/`. Cada una de ellas tiene un tamaño y un tipo de contenido diferente, aunque todas están relacionadas con los datos del proyecto TCGA-KIRC.
+Como se puede comprobar en la Tabla \ref{tab:data-directory-summary}, el directorio `data/` contiene tres subcarpetas principales: `clinical/`, `prepared/` y `transcriptome/`. Cada una de ellas tiene un tamaño y un tipo de contenido diferente, aunque todas están relacionadas con los datos del proyecto TCGA-KIRC. Dado que estos datos pertenecen al GDC y están sujetos a sus políticas de acceso y distribución, el directorio no se incluye en el repositorio público del proyecto. No obstante, con el fin de garantizar la reproducibilidad y facilitar la comprensión del estudio, se ha documentado detalladamente su estructura y contenido.
 
 En particular, la carpeta `clinical/` contiene los archivos asociados a la información clínica de los pacientes y está compuesta por un único archivo en formato `.tsv`, sin subdirectorios adicionales. Por otro lado, `transcriptome/` incluye los datos de expresión génica obtenidos mediante tecnologías de RNA-Seq, incluyendo un total de 614 archivos en formato `.tsv` distribuidos en 617 subcarpetas. Finalmente, el directorio `prepared/` reúne los objetos previamente procesados y estructurados para su posterior análisis, tales como matrices de recuentos y data frames clínicos preparados para su utilización directa. Este directorio no contiene subcarpetas y únicamente incluye dos archivos en formato `.rds`.
 
