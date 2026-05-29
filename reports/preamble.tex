@@ -10,8 +10,8 @@
 \usepackage{placeins}
 \usepackage{fvextra}
 \usepackage{array}
-\usepackage{hyperref}
 \usepackage{csquotes}
+\usepackage{titlesec}
 
 % Mantiene el formato APA de las referencias, pero muestra etiquetas [n]
 % en la bibliografia para que coincidan con las citas numericas del texto.
@@ -50,6 +50,10 @@
 \captionsetup[figure]{labelfont=bf,labelsep=period,font=small}
 \captionsetup[table]{labelfont=bf,labelsep=period,font=small}
 \addto\captionsspanish{\renewcommand{\tablename}{Tabla}}
+
+% Hace que los encabezados de cuarto nivel no aparezcan en linea con el texto.
+\titleformat{\paragraph}[block]{\normalfont\normalsize\bfseries}{\theparagraph}{1em}{}
+\titlespacing*{\paragraph}{0pt}{3.25ex plus 1ex minus .2ex}{0.8em}
 
 % Estilo de cabeceras
 \pagestyle{fancy}
