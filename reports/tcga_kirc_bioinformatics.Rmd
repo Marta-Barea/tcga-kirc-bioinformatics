@@ -49,6 +49,18 @@ options(width = 72)
 
 # Introducción
 
+La presente memoria se desarrolla en el marco de la **Prueba de Evaluación Continua 4 (PEC 4)** de la asignatura **Software para el Análisis de Datos**, perteneciente al **Máster Universitario en Bioinformática y Bioestadística**, impartido conjuntamente por la **Universitat Oberta de Catalunya (UOC)** y la **Universitat de Barcelona (UB)**. Esta actividad tiene como finalidad integrar y aplicar los conocimientos teóricos y prácticos adquiridos a lo largo de la asignatura mediante el diseño y ejecución de un proyecto de análisis de datos sobre una temática de libre elección, utilizando para ello un conjunto de datos seleccionado por el estudiante.
+
+En este contexto, el presente trabajo aborda el estudio del **carcinoma renal de células claras** (*Kidney Renal Clear Cell Carcinoma*, KIRC) a partir de datos procedentes de **The Cancer Genome Atlas (TCGA)**, uno de los consorcios internacionales más relevantes en el ámbito de la genómica del cáncer. La disponibilidad de datos moleculares y clínicos de alta calidad convierte a TCGA en una fuente de información de gran valor para la investigación biomédica, permitiendo la exploración de los mecanismos biológicos implicados en el desarrollo y progresión de numerosas neoplasias humanas.
+
+El carcinoma renal de células claras constituye el subtipo histológico más frecuente del cáncer renal y representa un importante desafío clínico debido a su elevada heterogeneidad molecular y a la variabilidad observada en la evolución de los pacientes. A pesar de los avances producidos durante las últimas décadas en el conocimiento de esta enfermedad, continúan existiendo interrogantes relacionados con los factores biológicos que condicionan su progresión, pronóstico y respuesta a los tratamientos. Por este motivo, la identificación de biomarcadores moleculares y la caracterización de los procesos biológicos subyacentes siguen siendo líneas prioritarias de investigación en oncología traslacional.
+
+Partiendo de esta motivación, se plantea la implementación de una estrategia bioinformática orientada al análisis exploratorio e integrativo de datos clínicos y transcriptómicos de pacientes diagnosticados de KIRC. Este enfoque permite aplicar de manera práctica conceptos fundamentales abordados durante la asignatura, incluyendo la adquisición y gestión de datos biomédicos, el preprocesamiento de información de alta dimensionalidad, el análisis estadístico de datos complejos, la visualización de resultados y la interpretación biológica de los hallazgos obtenidos.
+
+Asimismo, el desarrollo de este trabajo constituye una oportunidad para poner en práctica metodologías reproducibles de análisis de datos, un aspecto esencial en la investigación bioinformática actual. La capacidad para combinar herramientas computacionales, técnicas estadísticas y conocimientos biológicos resulta indispensable para transformar grandes volúmenes de datos ómicos en conocimiento útil y científicamente relevante.
+
+En consecuencia, el objetivo de esta memoria no se limita únicamente a la obtención de resultados sobre un caso de estudio concreto, sino que persigue demostrar la adquisición de las competencias desarrolladas a lo largo de la asignatura, mediante la construcción de un flujo de trabajo reproducible y fundamentado metodológicamente. De este modo, se pretende evidenciar el potencial de las herramientas de análisis de datos para generar conocimiento sobre los mecanismos moleculares asociados al carcinoma renal de células claras y contribuir a una mejor comprensión de esta patología desde una perspectiva bioinformática.
+
 \newpage
 
 # Estado del Arte
@@ -564,6 +576,11 @@ cat("\nNúmero total de valores faltantes restantes:", sum(is.na(clinical_data_f
 
 #### Estadística descriptiva
 
+Una vez completado el proceso de filtrado, recodificación y tratamiento de los valores faltantes en el conjunto clínico, se procedió a realizar un análisis estadístico descriptivo con el objetivo de caracterizar la distribución de las variables clínicas y demográficas en el cohorte TCGA-KIRC. 
+
+```{r descriptive-statistics-code}
+
+```
 
 \newpage
 
