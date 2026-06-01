@@ -7,6 +7,7 @@
 \usepackage{fancyhdr}
 \usepackage{float}
 \usepackage{booktabs}
+\usepackage{longtable}
 \usepackage{placeins}
 \usepackage{fvextra}
 \usepackage{array}
@@ -51,9 +52,23 @@
 \captionsetup[table]{labelfont=bf,labelsep=period,font=small}
 \addto\captionsspanish{\renewcommand{\tablename}{Tabla}}
 
-% Hace que los encabezados de cuarto nivel no aparezcan en linea con el texto.
+% Hace que los encabezados de quinto nivel no aparezcan en linea con el texto.
 \titleformat{\paragraph}[block]{\normalfont\normalsize\bfseries}{\theparagraph}{1em}{}
 \titlespacing*{\paragraph}{0pt}{3.25ex plus 1ex minus .2ex}{0.8em}
+
+\setcounter{secnumdepth}{5}
+\setcounter{tocdepth}{5}
+
+\titleformat{\subparagraph}[block]
+{\normalfont\normalsize\bfseries}
+{\thesubparagraph}
+{1em}
+{}
+
+\titlespacing*{\subparagraph}
+{0pt}
+{3.25ex plus 1ex minus .2ex}
+{0.8em}
 
 % Estilo de cabeceras
 \pagestyle{fancy}
