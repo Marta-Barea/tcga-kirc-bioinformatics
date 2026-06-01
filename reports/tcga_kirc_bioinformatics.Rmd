@@ -5,7 +5,7 @@ date: "18 de junio de 2026"
 output:
   pdf_document:
     toc: true
-    toc_depth: 4
+    toc_depth: 5
     number_sections: true
     highlight: tango
     latex_engine: xelatex
@@ -15,7 +15,7 @@ output:
       in_header: preamble.tex
   word_document:
     toc: true
-    toc_depth: '4'
+    toc_depth: '5'
 bibliography: references.bib
 biblio-title: Bibliografía
 biblatexoptions:
@@ -549,10 +549,10 @@ clinical_data_final <- clinical_data_filtered %>%
     ),
     ajcc_pathologic_stage = replace_na(
       ajcc_pathologic_stage,
-      "No disponible"
+      "Unknown"
     ),
-    tumor_grade = replace_na(tumor_grade, "No disponible"),
-    ajcc_pathologic_m = replace_na(ajcc_pathologic_m, "No disponible")
+    tumor_grade = replace_na(tumor_grade, "GX"),
+    ajcc_pathologic_m = replace_na(ajcc_pathologic_m, "MX")
   ) %>%
   select(-days_to_death)
 
@@ -572,15 +572,262 @@ print(clinical_data_final %>% select(death_event, survival_time) %>% head())
 cat("\nNúmero total de valores faltantes restantes:", sum(is.na(clinical_data_final)), "\n")
 ```
 
+Tal y como se muestra en el resumen anterior, tras aplicar esta estrategia de tratamiento de los valores faltantes residuales, el conjunto clínico final quedó completamente libre de NA. En particular, la variable `death_event` se recodificó correctamente, y la variable `survival_time` también quedó completa, con un total de 537 observaciones sin NA. Además, las variables categóricas con ausencia moderada quedaron recodificadas con categorías explícitas para los casos no informados.
+
 ### Tratamiento estadístico de los datos clínicos
 
 #### Estadística descriptiva
 
 Una vez completado el proceso de filtrado, recodificación y tratamiento de los valores faltantes en el conjunto clínico, se procedió a realizar un análisis estadístico descriptivo con el objetivo de caracterizar la distribución de las variables clínicas y demográficas en el cohorte TCGA-KIRC. 
 
-```{r descriptive-statistics-code}
+##### Variables categóricas
 
+En el caso de las variables categóricas, se resumieron en una única tabla, presentada como Tabla \ref{tab:categorical-descriptive-statistics}, que incluye la categoría modal de cada variable, junto con las frecuencias absolutas y relativas observadas para cada nivel.
+
+```{r categorical-descriptive-statistics, results='asis'}
+# Cargar librerías necesarias
+library(dplyr)
+library(kableExtra)
+library(stringr)
+library(tableone)
+
+# Identificar variables categóricas del conjunto de datos clínico
+categorical_vars <- names(
+  clinical_data_final %>%
+    select(where(~ is.character(.x) || is.factor(.x) || is.logical(.x)))
+)
+
+if (length(categorical_vars) == 0) {
+  stop(
+    "No se identificaron variables categóricas en clinical_data_final.",
+    call. = FALSE
+  )
+}
+
+# Tabla de frecuencias y moda para variables categóricas
+cat_table <- CreateCatTable(
+  vars = categorical_vars,
+  data = clinical_data_final,
+  includeNA = FALSE
+)
+
+categorical_summary <- bind_rows(lapply(names(cat_table$Overall), function(var_name) {
+  as_tibble(cat_table$Overall[[var_name]]) %>%
+    transmute(
+      variable = str_replace_all(var_name, "_", " "),
+      categoria = as.character(level),
+      frecuencia = as.integer(freq),
+      frecuencia_relativa = round(as.numeric(percent), 2)
+    )
+})) %>%
+  group_by(variable) %>%
+  mutate(
+    frecuencia_moda = max(frecuencia),
+    moda = if_else(
+      row_number() == 1,
+      paste(categoria[frecuencia == frecuencia_moda], collapse = " / "),
+      ""
+    ),
+    es_moda = if_else(frecuencia == frecuencia_moda, "Si", "No")
+  ) %>%
+  ungroup() %>%
+  select(variable, moda, categoria, frecuencia, frecuencia_relativa, es_moda)
+
+# Preparar la tabla en formato LaTeX
+categorical_table_latex <- kable(
+  categorical_summary,
+  format = "latex",
+  booktabs = TRUE,
+  longtable = TRUE,
+  linesep = "",
+  caption = paste(
+    "Resumen descriptivo de las variables categóricas del conjunto clínico final,",
+    "incluyendo la categoría modal, la frecuencia absoluta y la frecuencia relativa de cada nivel."
+  ),
+  col.names = c(
+    "Variable",
+    "Moda",
+    "Categoría",
+    "Frec. abs.",
+    "Frec. rel. (%)",
+    "Es moda"
+  ),
+  align = c("l", "c", "l", "r", "r", "c")
+) %>%
+  kable_styling(
+    latex_options = "hold_position",
+    font_size = 7,
+    repeat_header_text = ""
+  ) %>%
+  column_spec(1, width = "2.7cm") %>%
+  column_spec(2, width = "2.7cm") %>%
+  column_spec(3, width = "3.4cm") %>%
+  column_spec(4, width = "2.1cm") %>%
+  column_spec(5, width = "2.0cm") %>%
+  column_spec(6, width = "1.2cm") %>%
+  collapse_rows(columns = 1, valign = "middle", latex_hline = "major")
+
+# Mostrar la tabla en formato LaTeX
+cat(categorical_table_latex)
 ```
+
+A la vista de los resultados presentados en la Tabla \ref{tab:categorical-descriptive-statistics}, el conjunto de pacientes analizado estuvo formado por 537 casos de carcinoma renal, correspondiendo la gran mayoría al subtipo de células claras (`primary_diagnosis`; *clear cell adenocarcinoma, NOS*; 97,39%). Todos los tumores tuvieron origen en el riñón (`tissue_or_organ_of_origin`) y fueron considerados diagnósticos primarios.
+
+En cuanto a las características anatomopatológicas, el estadio patológico AJCC más frecuente (`acjcc_pathologic_stage`) fue el estadio I (50,09%), seguido de los estadios III (23,28%), IV (15,46%) y II (10,61%), lo que indica que aproximadamente la mitad de los pacientes presentaban enfermedad localizada. Respecto a la categoría T (`acjcc_pathologic_t`), que describe el tamaño y la extensión local del tumor primario, las categorías con mayor representación fueron T1a (26,44%), T3a (22,72%) y T1b (20,67%). Por su parte, la categoría N (`acjcc_pathologic_n`), relacionada con la afectación ganglionar regional, estuvo dominada por NX (52,14%) y N0 (44,69%), mientras que únicamente el 3,17% de los pacientes presentó afectación ganglionar (N1). En relación con la categoría M (`acjcc_pathologic_m`), que evalúa la presencia de metástasis a distancia, la mayoría de los casos se clasificó como M0 (79,33%), frente al 14,71% que presentó enfermedad metastásica (M1).
+
+La distribución por lateralidad (`laterality`) fue equilibrada, con un ligero predominio de los tumores localizados en el riñón derecho (52,70%). En relación con el grado tumoral (`tumor_grade`), los grados G2 (42,83%) y G3 (38,55%) fueron los más frecuentes, mientras que el 14,53% de los tumores correspondió a grado G4.
+
+Desde el punto de vista demográfico, predominó el sexo masculino (`sex_at_birth`; 64,43%) y la raza blanca (`race`; 86,78%). Asimismo, la mayoría de los pacientes fueron clasificados como no hispanos o latinos (`ethnicity`). Además, la mayor parte de los pacientes no presentaba antecedentes de malignidad previa (`prior_malignancy`; 87,71%) ni había recibido tratamiento previo (`prior_treatment`; 96,65%). En cuanto al tabaquismo (`tobacco_smoking_status`), la categoría más frecuente fue «Lifelong Non-Smoker» (42,28%), seguida de «Current Smoker» (20,67%) y «Current Reformed Smoker for > 15 yrs» (14,18%). No obstante, es importante destacar que en esta variable existió una proporción significativa de datos no reportados. En este sentido, la la categoría más frecuente fue «Not Reported» (70,95%), seguida de «Unknown» (12,85%).
+
+Finalmente, en el momento del último seguimiento, el 67,04% de los pacientes permanecía vivo (`vital_status`), mientras que el 32,96% había fallecido. Asimismo, el 62,57% se encontraba libre de tumor y el 28,12% presentaba evidencia de enfermedad tumoral (`person_neoplasm_cancer_status`).
+
+Con el fin de complementar la información presentada en la Tabla \ref{tab:categorical-descriptive-statistics}, se representaron gráficamente las distribuciones de frecuencia relativa de las variables categóricas mediante diagramas de barras, lo que permite comparar visualmente la composición de cada variable clínica. En estas gráficas se destacó la categoría modal de cada variable para facilitar su identificación visual.
+
+```{r categorical-descriptive-plots-setup}
+# Cargar librerías necesarias
+library(ggplot2)
+library(cowplot)
+library(stringr)
+library(dplyr)
+
+# Preparar los datos para las gráficas de variables categóricas
+categorical_plot_data <- categorical_summary %>%
+  group_by(variable) %>%
+  arrange(desc(frecuencia_relativa), categoria, .by_group = TRUE) %>%
+  mutate(
+    categoria_display = case_when(
+      variable == "tobacco smoking status" & categoria == "Lifelong Non-Smoker" ~ "Lifelong\nNon-Smoker",
+      variable == "tobacco smoking status" & categoria == "Current Reformed Smoker for < or = 15 yrs" ~ "Reformed Smoker\n<= 15 yrs",
+      variable == "tobacco smoking status" & categoria == "Current Reformed Smoker for > 15 yrs" ~ "Reformed Smoker\n> 15 yrs",
+      variable == "tobacco smoking status" & categoria == "Current Reformed Smoker, Duration Not Specified" ~ "Reformed Smoker\nDuration Unknown",
+      TRUE ~ categoria
+    ),
+    categoria_id = paste(variable, categoria, sep = "__"),
+    categoria = factor(categoria_id, levels = rev(unique(categoria_id)))
+  ) %>%
+  ungroup() %>%
+  mutate(variable = factor(variable, levels = str_replace_all(categorical_vars, "_", " ")))
+
+# Definir colores para destacar la categoría modal
+mode_colors <- c(
+  "Si" = "#0B7285",
+  "No" = "grey85"
+)
+
+# Función para crear el gráfico de barras de una variable categórica individual
+plot_categorica_individual <- function(data, variable_name, show_legend = FALSE) {
+  data_var <- data %>% filter(variable == variable_name)
+  category_labels <- setNames(
+    str_wrap(data_var$categoria_display, width = 26),
+    data_var$categoria
+  )
+  
+  ggplot(
+    data_var,
+    aes(x = frecuencia_relativa, y = categoria, fill = es_moda)
+  ) +
+    geom_col(width = 0.55, color = "white") +
+    scale_fill_manual(
+      values = mode_colors,
+      name = "Categoría modal"
+    ) +
+    labs(
+      title = str_wrap(as.character(variable_name), width = 22),
+      x = NULL,
+      y = if (show_legend) "Categoría" else NULL
+    ) +
+    scale_x_continuous(
+      expand = expansion(mult = c(0, 0.04))
+    ) +
+    scale_y_discrete(labels = category_labels) +
+    coord_cartesian(clip = "off") +
+    theme_minimal(base_size = 13) +
+    theme(
+      legend.position = if (show_legend) "top" else "none",
+      legend.direction = "horizontal",
+      legend.title = element_text(size = 10),
+      legend.text = element_text(size = 9),
+      plot.title = element_text(face = "bold", size = 10.5, hjust = 0.5, margin = margin(b = 4)),
+      axis.text.y = element_text(size = 8.5, lineheight = 0.95),
+      axis.text.x = element_text(size = 9),
+      axis.title.x = element_blank(),
+      axis.title.y = if (show_legend) element_text(size = 11) else element_blank(),
+      axis.ticks.x = element_blank(),
+      panel.grid.minor = element_blank(),
+      panel.grid.major.x = element_line(color = "grey88", linewidth = 0.25),
+      panel.grid.major.y = element_blank(),
+      plot.margin = margin(5, 14, 5, 14)
+    )
+}
+
+# Función para crear la figura combinada de todas las variables categóricas con una leyenda compartida
+plot_categoricas <- function(data) {
+  variable_levels <- levels(data$variable)
+  row_indices <- split(seq_along(variable_levels), ceiling(seq_along(variable_levels) / 2))
+  problematic_variables <- c("ajcc pathologic t", "tobacco smoking status")
+
+  legend_plot <- plot_categorica_individual(data, variable_levels[1], show_legend = TRUE)
+  shared_legend <- cowplot::get_legend(legend_plot)
+
+  row_plots <- lapply(row_indices, function(index_pair) {
+    vars_in_row <- variable_levels[index_pair]
+    plots_in_row <- lapply(vars_in_row, function(variable_name) {
+      plot_categorica_individual(data, variable_name)
+    })
+
+    if (length(plots_in_row) == 1) {
+      plots_in_row[[2]] <- ggplot() + theme_void()
+    }
+
+    cowplot::plot_grid(
+      plotlist = plots_in_row,
+      ncol = 2,
+      align = "h",
+      rel_widths = c(1, 1)
+    )
+  })
+
+  row_heights <- vapply(row_indices, function(index_pair) {
+    vars_in_row <- as.character(variable_levels[index_pair])
+    if (any(vars_in_row %in% problematic_variables)) 1.75 else 1
+  }, numeric(1))
+
+  body_plot <- cowplot::plot_grid(
+    plotlist = row_plots,
+    ncol = 1,
+    rel_heights = row_heights,
+    align = "v"
+  )
+
+  x_axis_label <- cowplot::ggdraw() +
+    cowplot::draw_label(
+      "Frecuencia relativa (%)",
+      fontface = "plain",
+      size = 11
+    )
+
+  cowplot::plot_grid(
+    shared_legend,
+    body_plot,
+    x_axis_label,
+    ncol = 1,
+    rel_heights = c(0.08, 1, 0.035)
+  )
+}
+```
+
+```{r categorical-descriptive-plot, fig.width=13.0, fig.height=19.8, fig.align='center', out.width='97%', out.height='0.94\\textheight', fig.pos='p', fig.cap='Distribución de frecuencias relativas de las variables categóricas del conjunto de datos clínico TCGA-KIRC.'}
+# Mostrar la figura combinada de todas las variables categóricas
+plot_categoricas(categorical_plot_data)
+```
+
+Como puede observarse en la Figura \ref{fig:categorical-descriptive-plot}, las distribuciones gráficas son coherentes con los resultados mostrados en la Tabla \ref{tab:categorical-descriptive-statistics}. La representación visual confirma el predominio de determinadas categorías en variables relacionadas con el diagnóstico, el origen del tumor y las características demográficas de los pacientes. 
+
+Asimismo, permite apreciar que algunas variables presentan distribuciones altamente concentradas en una única categoría, mientras que otras, especialmente las relacionadas con la estadificación tumoral y el grado histológico, muestran una mayor heterogeneidad. De este modo, la representación gráfica complementa y facilita la interpretación de los resultados descriptivos previamente expuestos para las variables categoricas del conjunto de datos clínicos de TCGA-KIRC.
+
+\newpage
+
+##### Variables continuas
 
 \newpage
 
