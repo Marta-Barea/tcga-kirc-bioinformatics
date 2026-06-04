@@ -794,7 +794,7 @@ categorical_table_latex <- kable(
 ) %>%
   kable_styling(
     latex_options = "hold_position",
-    font_size = 7,
+    font_size = 9,
     repeat_header_text = ""
   ) %>%
   column_spec(1, width = "2.7cm") %>%
@@ -1033,7 +1033,7 @@ continuous_table_latex <- kable(
 ) %>%
   kable_styling(
     latex_options = c("hold_position", "scale_down"),
-    font_size = 8,
+    font_size = 9,
     repeat_header_text = ""
   ) %>%
   column_spec(1, width = "3.8cm") %>%
