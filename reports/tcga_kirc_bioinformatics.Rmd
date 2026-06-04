@@ -1232,19 +1232,19 @@ library(dplyr)
 library(car)
 
 # Comprobar normalidad de age_at_diagnosis por grupos de ajcc_pathologic_stage
-normality_test_results <- clinical_data_final %>%
+normality_test_ajcc_results <- clinical_data_final %>%
   group_by(ajcc_pathologic_stage) %>%
   summarise(
     shapiro_p_value = shapiro.test(age_at_diagnosis)$p.value
   )
-print(normality_test_results)
+print(normality_test_ajcc_results)
 
 # Comprobar homocedasticidad de age_at_diagnosis entre grupos de ajcc_pathologic_stage
-levene_test_result <- leveneTest(age_at_diagnosis ~ ajcc_pathologic_stage , data = clinical_data_final)
-print(levene_test_result)
+levene_test_ajcc_result <- leveneTest(age_at_diagnosis ~ ajcc_pathologic_stage , data = clinical_data_final)
+print(levene_test_ajcc_result)
 ```
  
-A la vista de los resultados, se pueden observar diferencias respecto a los supuestos de las pruebas paramétricas, con una desviación significativa de la normalidad en el grupo de estadio III (*p* = 0.0428) y una falta de homogeneidad de varianzas entre los grupos (*p* = 0.030). Por ello, las diferencias en la edad al diagnóstico según el estadio patológico AJCC se analizaron mediante la prueba no paramétrica de Kruskal–Wallis.
+A la vista de los resultados, se pueden observar diferencias respecto a los supuestos de las pruebas paramétricas, con una desviación significativa de la normalidad en el grupo de estadio III (*p* = 0.0428) y una falta de homogeneidad de varianzas entre los grupos (p = 0.030). Por ello, las diferencias en la edad al diagnóstico según el estadio patológico AJCC se analizaron mediante la prueba no paramétrica de Kruskal–Wallis.
 
 ```{r age-ajcc-kruskal-wallis}
 # Realizar la prueba de Kruskal-Wallis para age_at_diagnosis por ajcc_pathologic_stage
@@ -1252,7 +1252,37 @@ kruskal_age_ajcc_results <- kruskal.test(age_at_diagnosis ~ ajcc_pathologic_stag
 print(kruskal_age_ajcc_results)
 ```
 
-De acuerdo con los resultados obtenidos, no se detectaron diferencias estadísticamente significativas en la edad al diagnóstico entre los distintos estadios patológicos AJCC (*p* = 0.060), lo que indica que las edades fueron comparables entre los grupos.
+De acuerdo con los resultados obtenidos, no se detectaron diferencias estadísticamente significativas en la edad al diagnóstico entre los distintos estadios patológicos AJCC (p= 0.060), lo que indica que las edades fueron comparables entre los grupos.
+
+##### Diferencias en la edad al diagnóstico entre el grado tumoral 
+
+De forma similar al análisis anterior, se verificaron los supuestos de normalidad y homogeneidad de varianzas para la edad al diagnóstico según el grado tumoral (`tumor_grade`). 
+
+```{r age-tumor-grade-assumptions-normality-homogeneity}
+# Comprobar normalidad de age_at_diagnosis por grupos de tumor_grade
+normality_test_grade_results <- clinical_data_final %>%
+  group_by(tumor_grade) %>%
+  summarise(
+    shapiro_p_value = shapiro.test(age_at_diagnosis)$p.value
+  )
+print(normality_test_grade_results)
+
+# Comprobar homocedasticidad de age_at_diagnosis entre grupos de tumor_grade
+levene_test_grade_result <- leveneTest(age_at_diagnosis ~ tumor_grade , data
+ = clinical_data_final)
+print(levene_test_grade_result)
+```
+
+Se observó una desviación significativa de la normalidad en el grupo G3 (p = 0.0487), mientras que se cumplió el supuesto de homogeneidad de varianzas entre los grupos (p = 0.247). Dado que no se verificó completamente el supuesto de normalidad, las diferencias en la edad al diagnóstico según el grado tumoral se analizaron mediante la prueba no paramétrica de Kruskal–Wallis.
+
+```{r age-tumor-grade-kruskal-wallis}
+# Realizar la prueba de Kruskal-Wallis para age_at_diagnosis por tumor_grade
+kruskal_age_grade_results <- kruskal.test(age_at_diagnosis ~ tumor_grade
+, data = clinical_data_final)
+print(kruskal_age_grade_results)
+```
+
+De acuerdo con los resultados obtenidos, no se detectaron diferencias estadísticamente significativas en la edad al diagnóstico entre los distintos grados tumorales (p = 0.3654), lo que sugiere que las edades fueron comparables entre los grupos.
 
 \newpage
 
