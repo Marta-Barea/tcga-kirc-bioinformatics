@@ -391,7 +391,7 @@ missingness_plot <- ggplot(missingness_heatmap_data, aes(observation, variable, 
 missingness_plot
 ```
 
-A la vista de los resultados observados en el *heatmap* de la Figura \ref{fig:missingness-heatmap-figure}, es posible determinar que existen variables que presentan una proporción muy elevada de valores ausentes, alcanzando incluso el 100 \% en algunos casos. Este comportamiento es consistente con la estructura del esquema clínico del GDC, que contempla un amplio conjunto de variables potenciales para la caracterización clínica de los pacientes. Sin embargo, la disponibilidad de esta información no es homogénea entre todos los individuos ni entre los distintos proyectos integrados en TCGA. Concretamente, en el cohorte TCGA-KIRC, los valores faltantes se concentraron principalmente en variables relacionadas con tratamientos, seguimiento clínico y antecedentes del paciente.
+A la vista de los resultados observados en el *heatmap* de la Figura \ref{fig:missingness-heatmap-figure}, es posible determinar que existen variables que presentan una proporción muy elevada de valores ausentes, alcanzando incluso el 100 \% en algunos casos. Este comportamiento es consistente con la estructura del esquema clínico del GDC, que contempla un amplio conjunto de variables potenciales para la caracterización clínica de los pacientes. Sin embargo, la disponibilidad de esta información no es homogénea entre todos los individuos ni entre los distintos proyectos integrados en TCGA. Concretamente, en la cohorte TCGA-KIRC, los valores faltantes se concentraron principalmente en variables relacionadas con tratamientos, seguimiento clínico y antecedentes del paciente.
 
 \FloatBarrier
 
@@ -401,7 +401,7 @@ Por ello, antes de realizar análisis posteriores, es necesario establecer una e
 
 #### Filtrado de variables con alto porcentaje de valores faltantes
 
-En este caso, como primer paso, se decidió eliminar las variables que presentaban más de un 50 % de valores faltantes, ya que aportaban información demasiado incompleta para una parte sustancial del cohorte. Mantener este tipo de variables podría reducir la robustez de los análisis posteriores y dificultar la interpretación de los resultados. No obstante, se conservó de forma expresa la variable `days_to_death`, a pesar de superar dicho umbral, por su interés clínico en el análisis de supervivencia. En cambio, las variables `days_to_last_follow_up` y `vital_status`, también de interés en el análisis de supervivencia, no requirieron ninguna excepción, ya que no superaban el umbral de ausencia y, por tanto, permanecieron en el conjunto filtrado de forma automática.
+En este caso, como primer paso, se decidió eliminar las variables que presentaban más de un 50 % de valores faltantes, ya que aportaban información demasiado incompleta para una parte sustancial dla cohorte. Mantener este tipo de variables podría reducir la robustez de los análisis posteriores y dificultar la interpretación de los resultados. No obstante, se conservó de forma expresa la variable `days_to_death`, a pesar de superar dicho umbral, por su interés clínico en el análisis de supervivencia. En cambio, las variables `days_to_last_follow_up` y `vital_status`, también de interés en el análisis de supervivencia, no requirieron ninguna excepción, ya que no superaban el umbral de ausencia y, por tanto, permanecieron en el conjunto filtrado de forma automática.
 
 ````{r missingness-treatment-code}
 # Definir un umbral para eliminar variables con alto porcentaje de valores faltantes
@@ -449,7 +449,7 @@ cat("Número de variables eliminadas:", length(variables_to_remove), "\n")
 cat("Número de variables conservadas:", ncol(clinical_data_filtered), "\n")
 ````
 
-Tras aplicar este criterio de filtrado, el número de variables clínicas se redujo de 95 a 40, eliminándose 55 variables con un porcentaje de valores ausentes superior al 50 \%. En términos generales, las variables descartadas correspondieron principalmente a información de tratamientos, radioterapia, hábitos tóxicos y determinados campos de seguimiento con escasa disponibilidad en el cohorte. Por el contrario, en el conjunto final se conservaron las variables clínicas y anatomopatológicas con mayor completitud, así como las variables clave para supervivencia.
+Tras aplicar este criterio de filtrado, el número de variables clínicas se redujo de 95 a 40, eliminándose 55 variables con un porcentaje de valores ausentes superior al 50 \%. En términos generales, las variables descartadas correspondieron principalmente a información de tratamientos, radioterapia, hábitos tóxicos y determinados campos de seguimiento con escasa disponibilidad en la cohorte. Por el contrario, en el conjunto final se conservaron las variables clínicas y anatomopatológicas con mayor completitud, así como las variables clave para supervivencia.
 
 Una vez aplicado el filtrado de variables con alto porcentaje de valores faltantes, se procedió a realizar un nuevo análisis de la distribución de los datos faltantes en el conjunto clínico filtrado. Este análisis permitió evaluar cómo había cambiado el patrón de valores ausentes tras la eliminación de las variables más incompletas y confirmar que el conjunto resultante presentaba una mayor calidad y consistencia. 
 
@@ -480,7 +480,7 @@ No obstante, se ha decidido conservar la variable `days_to_death`, a pesar de su
 
 #### Filtrado de variables administrativas, identificadores únicos y metadatos no relevantes para el análisis
 
-Además del filtrado de variables con alto porcentaje de valores faltantes, se decidió eliminar aquellas variables que, aunque no presentaban un elevado porcentaje de NA, correspondían a información administrativa o de identificación, como `submitter_id`, `diagnosis_id`, `exposure_id`, `demographic_id`, `bcr_patient_barcode`, `updated_datetime` y `project`, debido a que no aportan información clínica o biológica relevante para el análisis de supervivencia y podrían introducir redundancia o ruido.
+Además del filtrado de variables con alto porcentaje de valores faltantes, se decidió eliminar aquellas variables que, aunque no presentaban un elevado porcentaje de NA, correspondían a información administrativa o de identificación, como `submitter_id`, `diagnosis_id`, `exposure_id`, `demographic_id`, `bcr_patient_barcode`, `updated_datetime` y `project`, debido a que no aportan información clínica o biológica relevante.
 
 ```{r administrative-filtering-code}
 # Definir variables administrativas a eliminar
@@ -578,7 +578,7 @@ Tal y como se muestra en el resumen anterior, tras aplicar esta estrategia de tr
 
 #### Estadística descriptiva
 
-Una vez completado el proceso de filtrado, recodificación y tratamiento de los valores faltantes en el conjunto clínico, se procedió a realizar un análisis estadístico descriptivo con el objetivo de caracterizar la distribución de las variables clínicas y demográficas en el cohorte TCGA-KIRC. 
+Una vez completado el proceso de filtrado, recodificación y tratamiento de los valores faltantes en el conjunto clínico, se procedió a realizar un análisis estadístico descriptivo con el objetivo de caracterizar la distribución de las variables clínicas y demográficas en la cohorte TCGA-KIRC. 
 
 ##### Variables categóricas
 
@@ -821,15 +821,274 @@ plot_categoricas <- function(data) {
 plot_categoricas(categorical_plot_data)
 ```
 
-Como puede observarse en la Figura \ref{fig:categorical-descriptive-plot}, las distribuciones gráficas son coherentes con los resultados mostrados en la Tabla \ref{tab:categorical-descriptive-statistics}. La representación visual confirma el predominio de determinadas categorías en variables relacionadas con el diagnóstico, el origen del tumor y las características demográficas de los pacientes. 
+Como puede observarse en la Figura \ref{fig:categorical-descriptive-plot}, las distribuciones gráficas son consistentes con los resultados presentados en la Tabla \ref{tab:categorical-descriptive-statistics}. En términos generales, la cohorte se caracteriza por un claro predominio de determinadas categorías clínicas y demográficas. La mayoría de los pacientes presentan un diagnóstico primario de carcinoma de células renales, con origen en el riñón, y corresponden a tumores primarios sin evidencia de malignidades síncronas ni tratamientos previos.
 
-Asimismo, permite apreciar que algunas variables presentan distribuciones altamente concentradas en una única categoría, mientras que otras, especialmente las relacionadas con la estadificación tumoral y el grado histológico, muestran una mayor heterogeneidad. De este modo, la representación gráfica complementa y facilita la interpretación de los resultados descriptivos previamente expuestos para las variables categoricas del conjunto de datos clínicos de TCGA-KIRC.
+En relación con las características tumorales, se observa una mayor frecuencia de casos clasificados en estadios patológicos tempranos, especialmente Stage I, así como una predominancia de categorías T1–T2, N0 y M0. Del mismo modo, los grados histológicos G2 y G3 constituyen las categorías más representadas dentro de la cohorte.
+
+Desde el punto de vista demográfico, la población analizada está compuesta mayoritariamente por pacientes de sexo masculino, de raza blanca y de origen no hispano o latino. Asimismo, la variable `vital_status` muestra una mayor proporción de pacientes vivos en comparación con aquellos que habían fallecido en el momento del último seguimiento.
+
+Aunque la mayoría de las variables presentan una distribución claramente concentrada en una o pocas categorías, otras, particularmente las relacionadas con la estadificación tumoral, el grado histológico y los hábitos de tabaquismo, muestran una mayor heterogeneidad. En conjunto, la representación gráfica facilita la identificación de los patrones predominantes en la cohorte y complementa la interpretación de los resultados descriptivos obtenidos para las variables categóricas del conjunto de datos clínicos TCGA-KIRC.
 
 \newpage
 
 ##### Variables continuas
 
+En el caso de las variables continuas, se resumieron en una única tabla, presentada como Tabla \ref{tab:continuous-descriptive-statistics}, que incluye la media, la mediana, el rango intercuartílico (IQR) y el rango total (mínimo-máximo) de cada variable.
+
+```{r continuous-descriptive-statistics, results='asis'}
+# Ajustar opciones para evitar notación científica
+options(scipen = 999)
+
+# Cargar librerías necesarias
+library(dplyr)
+library(kableExtra)
+library(tidyr)
+
+# Identificar variables continuas del conjunto de datos clínico
+continuous_vars <- names(
+  clinical_data_final %>%
+    select(where(is.numeric))
+)
+
+if (length(continuous_vars) == 0) {
+  stop(
+    "No se identificaron variables continuas en clinical_data_final.",
+    call. = FALSE
+  )
+}
+
+# Tabla de estadísticas descriptivas para variables continuas
+continuous_summary <- clinical_data_final %>%
+  select(all_of(continuous_vars)) %>%
+  summarise(across(everything(), list(
+    mean = ~ mean(.x, na.rm = TRUE),
+    median = ~ median(.x, na.rm = TRUE),
+    iqr = ~ IQR(.x, na.rm = TRUE),
+    min = ~ min(.x, na.rm = TRUE),
+    max = ~ max(.x, na.rm = TRUE)
+  ), .names = "{.col}_{.fn}")) %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = c("variable", "statistic"),
+    names_pattern = "^(.*)_(mean|median|iqr|min|max)$"
+  ) %>%
+  pivot_wider(
+    names_from = statistic,
+    values_from = value
+  ) %>%
+  select(variable, mean, median, iqr, min, max)
+
+# Preparar la tabla en formato LaTeX
+continuous_table_latex <- kable(
+  continuous_summary,
+  format = "latex",
+  booktabs = TRUE,
+  longtable = TRUE,
+  linesep = "",
+  digits = 2,
+  caption = paste(
+    "Resumen descriptivo de las variables continuas del conjunto clínico final,",
+    "incluyendo la media, mediana, rango intercuartílico (IQR)",
+    "y rango total (mínimo-máximo) de cada variable."
+  ),
+  col.names = c(
+    "Variable", "Media", "Mediana", "IQR", "Mínimo", "Máximo"
+  ),
+  align = c("l", "c", "c", "c", "c", "c")
+) %>%
+  kable_styling(
+    latex_options = c("hold_position", "scale_down"),
+    font_size = 8,
+    repeat_header_text = ""
+  ) %>%
+  column_spec(1, width = "3.8cm") %>%
+  column_spec(2:6, width = "1.8cm")
+
+# Mostrar la tabla en formato LaTeX
+cat(continuous_table_latex)
+```
+
+A la vista de los resultados presentados en la Tabla \ref{tab:continuous-descriptive-statistics}, la cohorte TCGA-KIRC estuvo compuesta mayoritariamente por pacientes de edad avanzada, con una edad media al diagnóstico (`age_at_diagnosis`) de 22 301.88 días, equivalente aproximadamente a 61.1 años, y una mediana de 22 322 días (61.1 años). La dispersión observada (IQR = 6593 días) refleja una variabilidad moderada en la edad de los pacientes incluidos en el estudio.
+
+La variable `days_to_diagnosis` presentó valores constantes e iguales a cero en todos los casos analizados, como reflejan su media, mediana, IQR, mínimo y máximo, todos ellos iguales a 0. Por tanto, esta variable no mostró variabilidad en la cohorte y no aportó información distributiva relevante para la caracterización clínica de los pacientes.
+
+Asimismo, el año de diagnóstico (`year_of_diagnosis`) se concentró principalmente en torno a 2006 (mediana = 2006; IQR = 3 años), lo que indica que la mayor parte de los casos fueron diagnosticados durante la primera década de los años 2000.
+
+En relación con las variables de seguimiento, tanto el tiempo hasta el último seguimiento (`days_to_last_follow_up`) como el tiempo de supervivencia (`survival_time`) presentaron una mediana de 1175 días y un rango intercuartílico de 1389 días, evidenciando una considerable heterogeneidad en la duración del seguimiento clínico de los pacientes.
+
+Por último, la variable de estado vital (`death_event`) mostró una media de 0.33, lo que sugiere que aproximadamente un tercio de los pacientes experimentaron el evento de interés durante el periodo de observación, mientras que los restantes permanecieron vivos o censurados al finalizar el seguimiento.
+
+Con el fin de complementar la información presentada, en la Figura \ref{fig:continuous-descriptive-plots} se representaron gráficamente las distribuciones de las variables continuas mediante diagramas de violín, incorporando además diagramas de caja internos para visualizar la mediana, el rango intercuartílico y los valores atípicos. Se excluyeron de esta representación gráfica `death_event`, por tratarse de una variable binaria, y `days_to_diagnosis`, al presentar un valor constante igual a cero en todos los pacientes. Estas gráficas facilitan la interpretación visual de la distribución y dispersión de las principales variables continuas en la cohorte TCGA-KIRC.
+
+```{r continuous-descriptive-plots, fig.width=8.5, fig.height=7.5, fig.align='center', out.width='90%', out.height='0.9\\textheight', fig.pos='p', fig.cap='Distribución de las variables continuas del conjunto de datos clínico TCGA-KIRC representada mediante diagrama de violín.'}
+# Cargar librerías necesarias
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(patchwork)
+
+# Preparar los datos para las gráficas de variables continuas
+continuous_vars_plot <- continuous_vars[!continuous_vars %in% c(
+  "days_to_diagnosis",
+  "death_event"
+)]
+
+continuous_plot_data <- clinical_data_final %>%
+  select(all_of(continuous_vars_plot)) %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = "variable",
+    values_to = "value"
+  ) %>%
+  filter(!is.na(value))
+
+# Tema común
+violin_theme <- theme_bw(base_size = 11) +
+  theme(
+    plot.title = element_text(
+      hjust = 0.5,
+      face = "bold",
+      size = 10
+    ),
+    panel.grid.major.y =
+      element_line(colour = "grey90", linewidth = 0.25),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor = element_blank(),
+    legend.position = "none"
+  )
+
+# age_at_diagnosis
+p1 <- continuous_plot_data %>%
+  filter(variable == "age_at_diagnosis") %>%
+  ggplot(aes(x = "", y = value)) +
+  geom_violin(
+    fill = "#0B7285",
+    color = "#0B7285",
+    alpha = 0.85,
+    trim = FALSE,
+    adjust = 1.2,
+    linewidth = 0.4
+  ) +
+  geom_boxplot(
+    width = 0.08,
+    fill = "white",
+    color = "black",
+    linewidth = 0.5,
+    outlier.shape = 21,
+    outlier.size = 1.8,
+    outlier.stroke = 0.3,
+    outlier.fill = "#A2DA37",
+    outlier.color = "black"
+  ) +
+  labs(
+    title = "age_at_diagnosis",
+    x = NULL,
+    y = "Días"
+  ) +
+  violin_theme
+
+# year_of_diagnosis
+p2 <- continuous_plot_data %>%
+  filter(variable == "year_of_diagnosis") %>%
+  ggplot(aes(x = "", y = value)) +
+  geom_violin(
+    fill = "#0B7285",
+    color = "#0B7285",
+    alpha = 0.85,
+    trim = FALSE,
+    adjust = 1.2,
+    linewidth = 0.4
+  ) +
+  geom_boxplot(
+    width = 0.08,
+    fill = "white",
+    color = "black",
+    linewidth = 0.5,
+    outlier.shape = 21,
+    outlier.size = 1.8,
+    outlier.stroke = 0.3,
+    outlier.fill = "#A2DA37",
+    outlier.color = "black"
+  ) +
+  labs(
+    title = "year_of_diagnosis",
+    x = NULL,
+    y = "Año"
+  ) +
+  violin_theme
+
+# days_to_last_follow_up
+p3 <- continuous_plot_data %>%
+  filter(variable == "days_to_last_follow_up") %>%
+  ggplot(aes(x = "", y = value)) +
+  geom_violin(
+    fill = "#0B7285",
+    color = "#0B7285",
+    alpha = 0.85,
+    trim = FALSE,
+    adjust = 1.2,
+    linewidth = 0.4
+  ) +
+  geom_boxplot(
+    width = 0.08,
+    fill = "white",
+    color = "black",
+    linewidth = 0.5,
+    outlier.shape = 21,
+    outlier.size = 1.8,
+    outlier.stroke = 0.3,
+    outlier.fill = "#A2DA37",
+    outlier.color = "black"
+  ) +
+  labs(
+    title = "days_to_last_follow_up",
+    x = NULL,
+    y = "Días"
+  ) +
+  violin_theme
+
+# survival_time
+p4 <- continuous_plot_data %>%
+  filter(variable == "survival_time") %>%
+  ggplot(aes(x = "", y = value)) +
+  geom_violin(
+    fill = "#0B7285",
+    color = "#0B7285",
+    alpha = 0.85,
+    trim = FALSE,
+    adjust = 1.2,
+    linewidth = 0.4
+  ) +
+  geom_boxplot(
+    width = 0.08,
+    fill = "white",
+    color = "black",
+    linewidth = 0.5,
+    outlier.shape = 21,
+    outlier.size = 1.8,
+    outlier.stroke = 0.3,
+    outlier.fill = "#A2DA37",
+    outlier.color = "black"
+  ) +
+  labs(
+    title = "survival_time",
+    x = NULL,
+    y = "Días"
+  ) +
+  violin_theme
+
+# Figura combinada
+(p1 | p2) /
+(p3 | p4)
+```
+              
+La Figura \ref{fig:continuous-descriptive-plots} complementa la información presentada en la Tabla \ref{tab:continuous-descriptive-statistics}, mostrando la distribución de las principales variables continuas de la cohorte TCGA-KIRC mediante diagramas de violín. La variable `age_at_diagnosis` presenta una distribución relativamente concentrada en torno a su valor central, mientras que `year_of_diagnosis` muestra una mayor densidad de casos alrededor de los años 2004–2007, reflejando la concentración temporal de los diagnósticos incluidos en la cohorte.
+
+Por su parte, las variables `days_to_last_follow_up` y `survival_time` exhiben una mayor dispersión y una distribución asimétrica, lo que evidencia la heterogeneidad existente en los tiempos de seguimiento y supervivencia de los pacientes. Asimismo, se observan algunos valores atípicos, especialmente en estas variables, correspondientes a pacientes con periodos de observación o supervivencia notablemente superiores al resto de la cohorte. 
+
 \newpage
+
+
 
 # Análisis de los datos transcriptómicos
 
