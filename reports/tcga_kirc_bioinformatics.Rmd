@@ -1218,9 +1218,43 @@ En cambio, las variables `days_to_last_follow_up` y `survival_time` presentan un
 
 En conjunto, estas gráficas permiten comprobar que las variables continuas del conjunto clínico no siguen un único patrón de distribución. Mientras algunas, como `age_at_diagnosis`, presentan una dispersión más contenida, otras, como `days_to_last_follow_up` y `survival_time`, muestran una variabilidad mucho mayor entre pacientes. Esta diferencia resulta útil como referencia para los análisis posteriores, ya que ayuda a contextualizar mejor la heterogeneidad clínica presente en la cohorte TCGA-KIRC.
 
+#### Análisis exploratorio de diferencias en la edad al diagnóstico
+
+Con el fin de caracterizar la población de estudio e identificar posibles diferencias iniciales entre grupos, se realizó un análisis exploratorio de las variables clínicas de interés. En particular, se evaluó la asociación entre la edad al diagnóstico y las características clínicas de los pacientes mediante contrastes de hipótesis. 
+
+##### Diferencias en la edad al diagnóstico entre los estadios patológicos AJCC 
+
+Antes de comparar la edad al diagnóstico (`age_at_diagnosis`) entre los grupos definidos por el estadio patológico AJCC (`ajcc_pathologic_stage`), se verificó el cumplimiento de los supuestos de normalidad y homogeneidad de varianzas requeridos para las pruebas paramétricas, como Análisis de la Varianza (ANOVA). Para ello, se utilizaron las pruebas de Shapiro-Wilk y Levene, respectivamente.
+
+```{r age-ajcc-assumptions-normality-homogeneity}
+# Cargar librerías necesarias
+library(dplyr)
+library(car)
+
+# Comprobar normalidad de age_at_diagnosis por grupos de ajcc_pathologic_stage
+normality_test_results <- clinical_data_final %>%
+  group_by(ajcc_pathologic_stage) %>%
+  summarise(
+    shapiro_p_value = shapiro.test(age_at_diagnosis)$p.value
+  )
+print(normality_test_results)
+
+# Comprobar homocedasticidad de age_at_diagnosis entre grupos de ajcc_pathologic_stage
+levene_test_result <- leveneTest(age_at_diagnosis ~ ajcc_pathologic_stage , data = clinical_data_final)
+print(levene_test_result)
+```
+ 
+A la vista de los resultados, se pueden observar diferencias respecto a los supuestos de las pruebas paramétricas, con una desviación significativa de la normalidad en el grupo de estadio III (*p* = 0.0428) y una falta de homogeneidad de varianzas entre los grupos (*p* = 0.030). Por ello, las diferencias en la edad al diagnóstico según el estadio patológico AJCC se analizaron mediante la prueba no paramétrica de Kruskal–Wallis.
+
+```{r age-ajcc-kruskal-wallis}
+# Realizar la prueba de Kruskal-Wallis para age_at_diagnosis por ajcc_pathologic_stage
+kruskal_age_ajcc_results <- kruskal.test(age_at_diagnosis ~ ajcc_pathologic_stage, data = clinical_data_final)
+print(kruskal_age_ajcc_results)
+```
+
+De acuerdo con los resultados obtenidos, no se detectaron diferencias estadísticamente significativas en la edad al diagnóstico entre los distintos estadios patológicos AJCC (*p* = 0.060), lo que indica que las edades fueron comparables entre los grupos.
+
 \newpage
-
-
 
 # Análisis de los datos transcriptómicos
 
