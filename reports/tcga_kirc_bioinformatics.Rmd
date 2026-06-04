@@ -498,7 +498,7 @@ variables_to_remove <- c(
 )
 
 # Eliminar variables administrativas
-clinical_data_filtered <- clinical_data_filtered[, setdiff(names(clinical_data_filtered), variables_to_remove)]
+clinical_data_filtered <- clinical_data_filtered[, setdiff(names(clinical_data_filtered), variables_to_remove), drop = FALSE]
 
 # Mostrar variables eliminadas
 cat("Variables administrativas eliminadas:\n")
@@ -509,15 +509,153 @@ cat("\nNúmero total de variables después del filtrado administrativo:", ncol(c
 print(names(clinical_data_filtered))
 ```
 
-Tras la eliminación de variables administrativas, identificadores únicos y metadatos no relevantes para el estudio, el conjunto clínico final quedó reducido a 30 variables, conservando únicamente aquellas con potencial interés clínico y utilidad para los posteriores análisis.
+Tras la eliminación de variables administrativas, identificadores únicos y metadatos no relevantes para el estudio, el conjunto clínico quedó reducido a 30 variables. Aunque este subconjunto ya excluía campos ajenos al objetivo del análisis, todavía conservaba algunas variables con muy poca variabilidad y cierta información duplicada. Por ello, antes de pasar a la estadística descriptiva, se consideró necesario aplicar una depuración adicional.
+
+#### Filtrado de variables constantes o casi constantes
+
+Una vez retirados los identificadores y metadatos, se evaluó la variabilidad de las variables restantes con el fin de detectar aquellas columnas cuya capacidad para diferenciar entre pacientes era muy limitada. Para ello se aplicó un criterio similar al que suele emplearse en el preprocesamiento de datos, eliminando tanto las variables constantes como aquellas con varianza casi nula. En términos prácticos, se descartaron las variables con un único valor no ausente y también aquellas en las que coexistían muy pocos valores distintos y un claro predominio de la categoría modal, definido mediante una razón de frecuencias superior a 19 y un porcentaje de valores únicos inferior o igual al 10 \%.
+
+```{r low-variance-filtering-code}
+# Cargar librerías necesarias
+library(dplyr)
+
+# Resumir la variabilidad de cada variable
+summarize_variability <- function(column) {
+  non_missing_values <- column[!is.na(column)]
+  frequency_table <- sort(table(non_missing_values), decreasing = TRUE)
+  unique_non_missing <- length(unique(non_missing_values))
+  frequency_ratio <- if (length(frequency_table) > 1) {
+    as.numeric(frequency_table[1] / frequency_table[2])
+  } else {
+    Inf
+  }
+  percent_unique <- if (length(non_missing_values) == 0) {
+    0
+  } else {
+    100 * unique_non_missing / length(non_missing_values)
+  }
+  dominant_level_pct <- if (length(non_missing_values) == 0) {
+    NA_real_
+  } else {
+    100 * max(frequency_table) / length(non_missing_values)
+  }
+
+  data.frame(
+    unique_non_missing = unique_non_missing,
+    percent_unique = round(percent_unique, 2),
+    frequency_ratio = round(frequency_ratio, 2),
+    dominant_level_pct = round(dominant_level_pct, 2),
+    stringsAsFactors = FALSE
+  )
+}
+
+variable_variability_profile <- bind_rows(
+  lapply(clinical_data_filtered, summarize_variability),
+  .id = "variable"
+)
+
+near_zero_variance_vars <- variable_variability_profile %>%
+  filter(
+    unique_non_missing <= 1 |
+      (frequency_ratio > 19 & percent_unique <= 10)
+  ) %>%
+  pull(variable)
+
+# Eliminar variables con varianza nula o casi nula
+clinical_data_filtered <- clinical_data_filtered[, setdiff(names(clinical_data_filtered), near_zero_variance_vars), drop = FALSE]
+
+# Mostrar variables eliminadas y recuento final
+cat("Variables eliminadas por varianza nula o casi nula:\n")
+print(near_zero_variance_vars)
+
+cat(
+  "\nNúmero total de variables después del filtrado por baja variabilidad:",
+  ncol(clinical_data_filtered),
+  "\n"
+)
+```
+
+Como resultado de este procedimiento, se eliminaron 12 variables con escasa o nula capacidad informativa y el conjunto se redujo de 30 a 18 variables. Entre las variables descartadas se encontraban varias columnas completamente constantes, como `tissue_or_organ_of_origin`, `classification_of_tumor`, `site_of_resection_or_biopsy`, `diagnosis_is_primary_disease`, `days_to_diagnosis`, `icd_10_code` y `exposure_type`, junto con otras variables casi invariantes, entre ellas `primary_diagnosis`, `morphology`, `prior_treatment`, `synchronous_malignancy` y `age_is_obfuscated`. En conjunto, se trataba de variables que apenas aportaban diferenciación entre pacientes y que, por tanto, tenían una utilidad muy limitada para la descripción posterior de la cohorte.
+
+#### Filtrado de variables redundantes
+
+Una vez eliminadas las variables de baja variabilidad, se revisó la posible redundancia exacta entre las columnas restantes. En lugar de basarse únicamente en correlaciones, se comprobó la duplicidad literal entre variables, ya que algunas medidas pueden estar muy relacionadas entre sí sin ser necesariamente equivalentes desde un punto de vista clínico. Con este criterio se detectó una única duplicidad exacta, correspondiente a `gender` y `sex_at_birth`, que contenían la misma información en todas las observaciones. Por ello, se decidió conservar `sex_at_birth`, al considerarse una denominación más clara, y eliminar `gender`.
+
+```{r redundant-filtering-code}
+# Identificar pares de variables exactamente redundantes
+are_identical_variables <- function(x, y) {
+  identical(is.na(x), is.na(y)) && identical(as.character(x), as.character(y))
+}
+
+duplicate_variable_pairs <- list()
+variable_names <- names(clinical_data_filtered)
+
+for (i in seq_along(variable_names)) {
+  if (i == 1) {
+    next
+  }
+
+  for (j in seq_len(i - 1)) {
+    if (are_identical_variables(
+      clinical_data_filtered[[variable_names[i]]],
+      clinical_data_filtered[[variable_names[j]]]
+    )) {
+      duplicate_variable_pairs[[length(duplicate_variable_pairs) + 1]] <- c(
+        variable_names[j],
+        variable_names[i]
+      )
+    }
+  }
+}
+
+# Conservar el nombre más informativo cuando hay duplicidad exacta
+preferred_duplicates <- c(gender = "sex_at_birth")
+
+redundant_variables_to_remove <- if (length(duplicate_variable_pairs) == 0) {
+  character(0)
+} else {
+  unique(vapply(duplicate_variable_pairs, function(pair) {
+    first_variable <- pair[1]
+    second_variable <- pair[2]
+    preferred_match <- preferred_duplicates[first_variable]
+
+    if (!is.na(preferred_match) && preferred_match == second_variable) {
+      first_variable
+    } else {
+      second_variable
+    }
+  }, character(1)))
+}
+
+clinical_data_filtered <- clinical_data_filtered[, setdiff(names(clinical_data_filtered), redundant_variables_to_remove), drop = FALSE]
+
+# Mostrar variables redundantes y recuento final
+cat("Pares de variables redundantes detectados:\n")
+if (length(duplicate_variable_pairs) > 0) {
+  print(do.call(rbind, duplicate_variable_pairs))
+} else {
+  cat("No se detectaron duplicidades exactas.\n")
+}
+
+cat("\nVariables redundantes eliminadas:\n")
+print(redundant_variables_to_remove)
+
+cat(
+  "\nNúmero total de variables después del filtrado de redundancia:",
+  ncol(clinical_data_filtered),
+  "\n"
+)
+```
+
+Tras este último paso de depuración estructural, el conjunto clínico analítico quedó reducido a 17 variables antes de la recodificación final de las variables de supervivencia y del tratamiento de los valores faltantes residuales. De este modo, la estadística descriptiva posterior se apoya en un subconjunto más compacto, menos redundante y con una variabilidad real mayor entre pacientes.
 
 #### Recodificación y tratamiento de los valores faltantes residuales
 
-Una vez completado el filtrado, se revisó de nuevo el patrón de valores ausentes en las variables restantes. Esta inspección mostró una situación heterogénea. Por un lado, `days_to_death` presentaba un elevado porcentaje de NA, pero estos no correspondían a datos perdidos reales, sino a pacientes censurados que seguían vivos en el último seguimiento. Por otro lado, la mayoría de las covariables clínicas conservadas tenían porcentajes de ausencia muy bajos, generalmente inferiores al 1 %, con la excepción de `follow_ups_disease_response`, que presentaba una ausencia moderada.
+Una vez completado el filtrado por ausencia, metadatos, baja variabilidad y redundancia, se revisó de nuevo el patrón de valores ausentes en las variables restantes. Esta revisión mostró una situación heterogénea. Por una parte, `days_to_death` presentaba un porcentaje elevado de valores ausentes. Sin embargo, en este caso dichos NA no respondían a pérdidas reales de información, sino a pacientes censurados que seguían vivos en el último seguimiento. Por otra parte, la mayoría de las covariables clínicas conservadas presentaba porcentajes de ausencia muy bajos, en general inferiores al 1 %, con la excepción de `follow_ups_disease_response`, que mantenía una ausencia moderada.
 
-Por este motivo, se descartó aplicar una estrategia global de imputación sobre todo el conjunto clínico. Además, dicho planteamiento no resultaba coherente con la variable `days_to_birth`, ya que esta había sido eliminada previamente del conjunto analítico por su escasa utilidad interpretativa y por ser redundante frente a `age_at_diagnosis`. En consecuencia, `days_to_birth` no debía formar parte del proceso de tratamiento de los valores ausentes.
+Por este motivo, se descartó aplicar una estrategia global de imputación sobre todo el conjunto clínico. Además, este planteamiento tampoco resultaba coherente con variables que ya habían sido excluidas en fases previas, como `days_to_birth`, cuya utilidad interpretativa era escasa y cuyo contenido se solapaba con `age_at_diagnosis`.
 
-En lugar de ello, se optó por una estrategia dirigida y más fácilmente interpretable. Primero, `days_to_death` se recodificó como una variable de evento (`death_event`) y una variable de tiempo de supervivencia (`survival_time`), tratando sus NA como observaciones censuradas. Después, los pocos valores faltantes restantes se trataron de forma específica según el tipo de variable. `age_at_diagnosis`, al presentar una única ausencia, se completó con la mediana. En las variables categóricas `follow_ups_disease_response`, `ajcc_pathologic_stage`, `tumor_grade` y `ajcc_pathologic_m`, los NA se recodificaron explícitamente como categorías no informadas. Para ello se utilizó `Unknown` en `follow_ups_disease_response` y `No disponible` en el resto. De este modo, se evita introducir un tratamiento innecesariamente complejo en un conjunto donde la ausencia residual es limitada y clínicamente interpretable. Además, esta decisión evita confundir los valores ausentes con categorías clínicas válidas ya presentes en los datos originales, como `GX` en `tumor_grade`, que indica que el grado histológico del tumor no pudo ser evaluado, y `MX` en `ajcc_pathologic_m`, que señala que no fue posible determinar la presencia o ausencia de metástasis.
+En su lugar, se optó por una estrategia dirigida y fácilmente interpretable. En primer lugar, `days_to_death` se recodificó en una variable de evento, `death_event`, y en una variable de tiempo de supervivencia, `survival_time`, considerando sus valores ausentes como observaciones censuradas. A continuación, los pocos valores faltantes restantes se trataron de forma específica según la naturaleza de cada variable. La variable `age_at_diagnosis`, que presentaba una única ausencia, se completó mediante la mediana. En las variables categóricas `follow_ups_disease_response` y `ajcc_pathologic_stage`, los NA se recodificaron como `Unknown`, mientras que en `tumor_grade` y `ajcc_pathologic_m` se emplearon `GX` y `MX`, respectivamente, con el fin de mantener una codificación coherente con la nomenclatura clínica ya presente en el conjunto. De este modo, se evitó introducir un tratamiento innecesariamente complejo en un escenario donde la ausencia residual era limitada y clínicamente interpretable.
 
 ```{r missing-data-treatment-code}
 # Cargar librerías necesarias
@@ -572,13 +710,13 @@ print(clinical_data_final %>% select(death_event, survival_time) %>% head())
 cat("\nNúmero total de valores faltantes restantes:", sum(is.na(clinical_data_final)), "\n")
 ```
 
-Tal y como se muestra en el resumen anterior, tras aplicar esta estrategia de tratamiento de los valores faltantes residuales, el conjunto clínico final quedó completamente libre de NA. En particular, la variable `death_event` se recodificó correctamente, y la variable `survival_time` también quedó completa, con un total de 537 observaciones sin NA. Además, las variables categóricas con ausencia moderada quedaron recodificadas con categorías explícitas para los casos no informados.
+Tal y como se observa en el resumen anterior, tras aplicar esta estrategia de tratamiento de los valores faltantes residuales, el conjunto clínico final quedó completamente libre de NA. En particular, la variable `death_event` quedó correctamente recodificada y la variable `survival_time` pasó a estar completa en las 537 observaciones de la cohorte. Del mismo modo, las variables categóricas con ausencia moderada quedaron recodificadas mediante categorías explícitas para los casos no informados.
 
 ### Tratamiento estadístico de los datos clínicos
 
 #### Estadística descriptiva
 
-Una vez completado el proceso de filtrado, recodificación y tratamiento de los valores faltantes en el conjunto clínico, se procedió a realizar un análisis estadístico descriptivo con el objetivo de caracterizar la distribución de las variables clínicas y demográficas en la cohorte TCGA-KIRC. 
+Una vez completado el proceso de filtrado, recodificación y tratamiento de los valores faltantes en el conjunto clínico, se procedió a realizar un análisis estadístico descriptivo con el objetivo de caracterizar la distribución de las variables clínicas y demográficas en la cohorte TCGA-KIRC. El conjunto finalmente utilizado en esta fase quedó integrado por 18 variables, de las cuales 13 eran categóricas y 5 numéricas, tras incorporar `death_event` y `survival_time` y retirar `days_to_death`.
 
 ##### Variables categóricas
 
@@ -671,15 +809,13 @@ categorical_table_latex <- kable(
 cat(categorical_table_latex)
 ```
 
-A la vista de los resultados presentados en la Tabla \ref{tab:categorical-descriptive-statistics}, el conjunto de pacientes analizado estuvo formado por 537 casos de carcinoma renal, correspondiendo la gran mayoría al subtipo de células claras (`primary_diagnosis`; *clear cell adenocarcinoma, NOS*; 97,39%). Todos los tumores tuvieron origen en el riñón (`tissue_or_organ_of_origin`) y fueron considerados diagnósticos primarios.
+A la vista de los resultados presentados en la Tabla \ref{tab:categorical-descriptive-statistics}, puede observarse que el conjunto final conserva aquellas variables categóricas que aportan una mayor variabilidad clínica dentro de la cohorte. En relación con las características anatomopatológicas, el estadio patológico AJCC más frecuente (`ajcc_pathologic_stage`) fue el estadio I, con un 50,09 %, seguido de los estadios III, IV e II. Este patrón sugiere que aproximadamente la mitad de los pacientes presentaba enfermedad localizada. En cuanto a la categoría T (`ajcc_pathologic_t`), las modalidades con mayor representación fueron T1a, T3a y T1b. Por su parte, la categoría N (`ajcc_pathologic_n`) estuvo dominada por NX y N0, mientras que la afectación ganglionar regional confirmada fue poco frecuente. En relación con la categoría M (`ajcc_pathologic_m`), predominó claramente la clasificación M0, mientras que los casos M1 y MX presentaron una representación bastante menor.
 
-En cuanto a las características anatomopatológicas, el estadio patológico AJCC más frecuente (`acjcc_pathologic_stage`) fue el estadio I (50,09%), seguido de los estadios III (23,28%), IV (15,46%) y II (10,61%), lo que indica que aproximadamente la mitad de los pacientes presentaban enfermedad localizada. Respecto a la categoría T (`acjcc_pathologic_t`), que describe el tamaño y la extensión local del tumor primario, las categorías con mayor representación fueron T1a (26,44%), T3a (22,72%) y T1b (20,67%). Por su parte, la categoría N (`acjcc_pathologic_n`), relacionada con la afectación ganglionar regional, estuvo dominada por NX (52,14%) y N0 (44,69%), mientras que únicamente el 3,17% de los pacientes presentó afectación ganglionar (N1). En relación con la categoría M (`acjcc_pathologic_m`), que evalúa la presencia de metástasis a distancia, la mayoría de los casos se clasificó como M0 (79,33%), frente al 14,71% que presentó enfermedad metastásica (M1).
+La distribución por lateralidad (`laterality`) fue relativamente equilibrada, aunque con un ligero predominio de los tumores localizados en el riñón derecho, que representaron el 52,70 % de los casos. En lo que respecta al grado tumoral (`tumor_grade`), los grados G2 y G3 fueron los más frecuentes, mientras que los tumores G4 mostraron una presencia menor.
 
-La distribución por lateralidad (`laterality`) fue equilibrada, con un ligero predominio de los tumores localizados en el riñón derecho (52,70%). En relación con el grado tumoral (`tumor_grade`), los grados G2 (42,83%) y G3 (38,55%) fueron los más frecuentes, mientras que el 14,53% de los tumores correspondió a grado G4.
+Desde el punto de vista demográfico, predominó el sexo masculino (`sex_at_birth`), que representó el 64,43 % de la cohorte, así como la raza blanca (`race`), con un 86,78 %. Del mismo modo, la mayor parte de los pacientes fue clasificada como no hispana o latina (`ethnicity`), aunque una proporción relevante quedó registrada como no reportada. Por otra parte, la mayoría de los pacientes no presentaba antecedentes de malignidad previa (`prior_malignancy`). En cuanto al tabaquismo (`tobacco_smoking_status`), su interpretación debe hacerse con cautela, ya que la variable concentra una proporción muy elevada de información no especificada. En efecto, `Not Reported` constituyó la categoría modal y `Unknown` ocupó el segundo lugar en frecuencia. Si se considera el total de la cohorte, la categoría informada más frecuente fue `Lifelong Non-Smoker`, aunque con un peso claramente inferior al de las categorías no informadas.
 
-Desde el punto de vista demográfico, predominó el sexo masculino (`sex_at_birth`; 64,43%) y la raza blanca (`race`; 86,78%). Asimismo, la mayoría de los pacientes fueron clasificados como no hispanos o latinos (`ethnicity`). Además, la mayor parte de los pacientes no presentaba antecedentes de malignidad previa (`prior_malignancy`; 87,71%) ni había recibido tratamiento previo (`prior_treatment`; 96,65%). En cuanto al tabaquismo (`tobacco_smoking_status`), la categoría más frecuente fue «Lifelong Non-Smoker» (42,28%), seguida de «Current Smoker» (20,67%) y «Current Reformed Smoker for > 15 yrs» (14,18%). No obstante, es importante destacar que en esta variable existió una proporción significativa de datos no reportados. En este sentido, la la categoría más frecuente fue «Not Reported» (70,95%), seguida de «Unknown» (12,85%).
-
-Finalmente, en el momento del último seguimiento, el 67,04% de los pacientes permanecía vivo (`vital_status`), mientras que el 32,96% había fallecido. Asimismo, el 62,57% se encontraba libre de tumor y el 28,12% presentaba evidencia de enfermedad tumoral (`person_neoplasm_cancer_status`).
+Finalmente, en el momento del último seguimiento, el 67,04 % de los pacientes permanecía vivo (`vital_status`), mientras que el 32,96 % había fallecido. De forma concordante, la respuesta clínica recogida en `follow_ups_disease_response` mostró un predominio de casos libres de tumor, mientras que los pacientes con evidencia de enfermedad y los casos sin información explícita representaron proporciones menores.
 
 Con el fin de complementar la información presentada en la Tabla \ref{tab:categorical-descriptive-statistics}, se representaron gráficamente las distribuciones de frecuencia relativa de las variables categóricas mediante diagramas de barras, lo que permite comparar visualmente la composición de cada variable clínica. En estas gráficas se destacó la categoría modal de cada variable para facilitar su identificación visual.
 
@@ -821,14 +957,13 @@ plot_categoricas <- function(data) {
 plot_categoricas(categorical_plot_data)
 ```
 
-Como puede observarse en la Figura \ref{fig:categorical-descriptive-plot}, las distribuciones gráficas son consistentes con los resultados presentados en la Tabla \ref{tab:categorical-descriptive-statistics}. En términos generales, la cohorte se caracteriza por un claro predominio de determinadas categorías clínicas y demográficas. La mayoría de los pacientes presentan un diagnóstico primario de carcinoma de células renales, con origen en el riñón, y corresponden a tumores primarios sin evidencia de malignidades síncronas ni tratamientos previos.
+Como puede observarse en la Figura \ref{fig:categorical-descriptive-plot}, las distribuciones gráficas son coherentes con los resultados resumidos en la Tabla \ref{tab:categorical-descriptive-statistics}. El gráfico permite identificar con mayor facilidad qué rasgos clínicos concentran las principales diferencias observadas dentro de la cohorte. En este sentido, se aprecia el predominio del estadio patológico I, la elevada frecuencia de determinadas categorías de la variable T, la concentración de los casos en NX o N0 y la mayor presencia de tumores no metastásicos.
 
-En relación con las características tumorales, se observa una mayor frecuencia de casos clasificados en estadios patológicos tempranos, especialmente Stage I, así como una predominancia de categorías T1–T2, N0 y M0. Del mismo modo, los grados histológicos G2 y G3 constituyen las categorías más representadas dentro de la cohorte.
+Desde el punto de vista demográfico, la población analizada sigue mostrando un predominio de pacientes de sexo masculino, de raza blanca y de origen no hispano o latino. Asimismo, la variable `vital_status` refleja una mayor proporción de pacientes vivos al cierre del seguimiento, mientras que `follow_ups_disease_response` apunta también hacia un predominio de pacientes libres de tumor.
 
-Desde el punto de vista demográfico, la población analizada está compuesta mayoritariamente por pacientes de sexo masculino, de raza blanca y de origen no hispano o latino. Asimismo, la variable `vital_status` muestra una mayor proporción de pacientes vivos en comparación con aquellos que habían fallecido en el momento del último seguimiento.
+La figura también permite apreciar qué variables mantienen distribuciones muy concentradas, aunque ya no extremas, como ocurre con `prior_malignancy`, y cuáles conservan una mayor heterogeneidad, como sucede con la estadificación tumoral, el grado histológico o el tabaquismo. En conjunto, esta visualización complementa la interpretación descriptiva del subconjunto clínico final analizado en este trabajo.
 
-Aunque la mayoría de las variables presentan una distribución claramente concentrada en una o pocas categorías, otras, particularmente las relacionadas con la estadificación tumoral, el grado histológico y los hábitos de tabaquismo, muestran una mayor heterogeneidad. En conjunto, la representación gráfica facilita la identificación de los patrones predominantes en la cohorte y complementa la interpretación de los resultados descriptivos obtenidos para las variables categóricas del conjunto de datos clínicos TCGA-KIRC.
-
+En general, este patrón descriptivo es coherente con las características clínicas de la cohorte estudiada y confirma que el conjunto de variables seleccionado es adecuado para realizar los análisis posteriores. Las variables conservadas presentan un nivel de completitud aceptable y, además, incluyen información relevante sobre la enfermedad, como la extensión del tumor, el grado de agresividad histológica, el estado vital de los pacientes y diversos factores demográficos y clínicos. 
 \newpage
 
 ##### Variables continuas
@@ -908,17 +1043,15 @@ continuous_table_latex <- kable(
 cat(continuous_table_latex)
 ```
 
-A la vista de los resultados presentados en la Tabla \ref{tab:continuous-descriptive-statistics}, la cohorte TCGA-KIRC estuvo compuesta mayoritariamente por pacientes de edad avanzada, con una edad media al diagnóstico (`age_at_diagnosis`) de 22 301.88 días, equivalente aproximadamente a 61.1 años, y una mediana de 22 322 días (61.1 años). La dispersión observada (IQR = 6593 días) refleja una variabilidad moderada en la edad de los pacientes incluidos en el estudio.
-
-La variable `days_to_diagnosis` presentó valores constantes e iguales a cero en todos los casos analizados, como reflejan su media, mediana, IQR, mínimo y máximo, todos ellos iguales a 0. Por tanto, esta variable no mostró variabilidad en la cohorte y no aportó información distributiva relevante para la caracterización clínica de los pacientes.
+A la vista de los resultados presentados en la Tabla \ref{tab:continuous-descriptive-statistics}, la cohorte TCGA-KIRC estuvo compuesta mayoritariamente por pacientes de edad avanzada, con una edad media al diagnóstico (`age_at_diagnosis`) de 22 301.88 días, equivalente aproximadamente a 61,1 años, y una mediana de 22 322 días. La dispersión observada (IQR = 6593 días) refleja una variabilidad moderada en la edad de los pacientes incluidos en el estudio.
 
 Asimismo, el año de diagnóstico (`year_of_diagnosis`) se concentró principalmente en torno a 2006 (mediana = 2006; IQR = 3 años), lo que indica que la mayor parte de los casos fueron diagnosticados durante la primera década de los años 2000.
 
-En relación con las variables de seguimiento, tanto el tiempo hasta el último seguimiento (`days_to_last_follow_up`) como el tiempo de supervivencia (`survival_time`) presentaron una mediana de 1175 días y un rango intercuartílico de 1389 días, evidenciando una considerable heterogeneidad en la duración del seguimiento clínico de los pacientes.
+En relación con las variables de seguimiento, tanto el tiempo hasta el último seguimiento (`days_to_last_follow_up`) como el tiempo de supervivencia (`survival_time`) presentaron una mediana de 1175 días y un rango intercuartílico de 1389 días, evidenciando una considerable heterogeneidad en la duración del seguimiento clínico. En esta cohorte ambos resúmenes resultaron idénticos tras la recodificación de supervivencia, lo que refuerza la coherencia interna del tratamiento aplicado a `days_to_death` y `days_to_last_follow_up`.
 
-Por último, la variable de estado vital (`death_event`) mostró una media de 0.33, lo que sugiere que aproximadamente un tercio de los pacientes experimentaron el evento de interés durante el periodo de observación, mientras que los restantes permanecieron vivos o censurados al finalizar el seguimiento.
+Por último, la variable de evento (`death_event`) mostró una media de 0.33, lo que sugiere que aproximadamente un tercio de los pacientes experimentaron el evento de interés durante el periodo de observación, mientras que los restantes permanecieron vivos o censurados al finalizar el seguimiento.
 
-Con el fin de complementar la información presentada, en la Figura \ref{fig:continuous-descriptive-plots} se representaron gráficamente las distribuciones de las variables continuas mediante diagramas de violín, incorporando además diagramas de caja internos para visualizar la mediana, el rango intercuartílico y los valores atípicos. Se excluyeron de esta representación gráfica `death_event`, por tratarse de una variable binaria, y `days_to_diagnosis`, al presentar un valor constante igual a cero en todos los pacientes. Estas gráficas facilitan la interpretación visual de la distribución y dispersión de las principales variables continuas en la cohorte TCGA-KIRC.
+Con el fin de complementar la información presentada, en la Figura \ref{fig:continuous-descriptive-plots} se representaron gráficamente las distribuciones de las variables continuas mediante diagramas de violín, incorporando además diagramas de caja internos para visualizar la mediana, el rango intercuartílico y los valores atípicos. Se excluyó de esta representación gráfica `death_event`, por tratarse de una variable binaria. Estas gráficas facilitan la interpretación visual de la distribución y dispersión de las principales variables continuas en la cohorte TCGA-KIRC.
 
 ```{r continuous-descriptive-plots, fig.width=8.5, fig.height=7.5, fig.align='center', out.width='90%', out.height='0.9\\textheight', fig.pos='p', fig.cap='Distribución de las variables continuas del conjunto de datos clínico TCGA-KIRC representada mediante diagrama de violín.'}
 # Cargar librerías necesarias
@@ -928,10 +1061,7 @@ library(tidyr)
 library(patchwork)
 
 # Preparar los datos para las gráficas de variables continuas
-continuous_vars_plot <- continuous_vars[!continuous_vars %in% c(
-  "days_to_diagnosis",
-  "death_event"
-)]
+continuous_vars_plot <- continuous_vars[continuous_vars != "death_event"]
 
 continuous_plot_data <- clinical_data_final %>%
   select(all_of(continuous_vars_plot)) %>%
@@ -1082,9 +1212,11 @@ p4 <- continuous_plot_data %>%
 (p3 | p4)
 ```
               
-La Figura \ref{fig:continuous-descriptive-plots} complementa la información presentada en la Tabla \ref{tab:continuous-descriptive-statistics}, mostrando la distribución de las principales variables continuas de la cohorte TCGA-KIRC mediante diagramas de violín. La variable `age_at_diagnosis` presenta una distribución relativamente concentrada en torno a su valor central, mientras que `year_of_diagnosis` muestra una mayor densidad de casos alrededor de los años 2004–2007, reflejando la concentración temporal de los diagnósticos incluidos en la cohorte.
+Los diagramas de violín de la Figura \ref{fig:continuous-descriptive-plots} ofrecen una visión directa de la forma y la dispersión de las principales variables continuas de la cohorte TCGA-KIRC. En ellos se aprecia que `age_at_diagnosis` se concentra en torno a valores intermedios, mientras que `year_of_diagnosis` reúne la mayor densidad de observaciones entre 2004 y 2007, en consonancia con el periodo en el que se registró la mayor parte de los casos incluidos en el estudio.
 
-Por su parte, las variables `days_to_last_follow_up` y `survival_time` exhiben una mayor dispersión y una distribución asimétrica, lo que evidencia la heterogeneidad existente en los tiempos de seguimiento y supervivencia de los pacientes. Asimismo, se observan algunos valores atípicos, especialmente en estas variables, correspondientes a pacientes con periodos de observación o supervivencia notablemente superiores al resto de la cohorte. 
+En cambio, las variables `days_to_last_follow_up` y `survival_time` presentan una mayor amplitud y una distribución asimétrica, lo que pone de manifiesto la heterogeneidad de los tiempos de seguimiento y supervivencia entre pacientes. También se identifican algunos valores atípicos, especialmente en estas dos variables, asociados a casos con periodos de observación o supervivencia notablemente más prolongados que los del resto de la cohorte. 
+
+En conjunto, estas gráficas permiten comprobar que las variables continuas del conjunto clínico no siguen un único patrón de distribución. Mientras algunas, como `age_at_diagnosis`, presentan una dispersión más contenida, otras, como `days_to_last_follow_up` y `survival_time`, muestran una variabilidad mucho mayor entre pacientes. Esta diferencia resulta útil como referencia para los análisis posteriores, ya que ayuda a contextualizar mejor la heterogeneidad clínica presente en la cohorte TCGA-KIRC.
 
 \newpage
 
