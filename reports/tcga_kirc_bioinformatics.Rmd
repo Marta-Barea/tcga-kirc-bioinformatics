@@ -1053,7 +1053,7 @@ Por último, la variable de evento (`death_event`) mostró una media de 0.33, lo
 
 Con el fin de complementar la información presentada, en la Figura \ref{fig:continuous-descriptive-plots} se representaron gráficamente las distribuciones de las variables continuas mediante diagramas de violín, incorporando además diagramas de caja internos para visualizar la mediana, el rango intercuartílico y los valores atípicos. Se excluyó de esta representación gráfica `death_event`, por tratarse de una variable binaria. Estas gráficas facilitan la interpretación visual de la distribución y dispersión de las principales variables continuas en la cohorte TCGA-KIRC.
 
-```{r continuous-descriptive-plots, fig.width=8.5, fig.height=7.5, fig.align='center', out.width='90%', out.height='0.9\\textheight', fig.pos='p', fig.cap='Distribución de las variables continuas del conjunto de datos clínico TCGA-KIRC representada mediante diagrama de violín.'}
+```{r continuous-descriptive-plots, fig.width=10, fig.height=7.5, fig.align='center', out.width='100%', out.height='0.9\\textheight', fig.pos='p', fig.cap='Distribución de las variables continuas del conjunto de datos clínico TCGA-KIRC representada mediante diagrama de violín.'}
 # Cargar librerías necesarias
 library(ggplot2)
 library(dplyr)
