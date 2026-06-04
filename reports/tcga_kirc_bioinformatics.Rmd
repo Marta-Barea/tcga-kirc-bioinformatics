@@ -67,6 +67,10 @@ En consecuencia, el objetivo de esta memoria no se limita únicamente a la obten
 
 \newpage
 
+# Materiales y Método
+
+\newpage
+
 # Adquisición de datos
 
 Antes de realizar cualquier análisis bioinformático, es fundamental disponer de un conjunto de datos adecuado y correctamente organizado. En este tipo de estudios, una parte importante del trabajo inicial consiste en localizar, descargar y preparar los datos que posteriormente serán utilizados en los análisis.
