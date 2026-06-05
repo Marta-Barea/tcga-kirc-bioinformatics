@@ -555,21 +555,20 @@ Como resultado de este procedimiento, se eliminaron 12 variables con escasa o nu
 
 #### Filtrado de variables redundantes
 
-Una vez eliminadas las variables de baja variabilidad, se revisó la posible redundancia exacta entre las columnas restantes. En lugar de basarse únicamente en correlaciones, se comprobó la duplicidad literal entre variables, ya que algunas medidas pueden estar muy relacionadas entre sí sin ser necesariamente equivalentes desde un punto de vista clínico. Con este criterio se detectó una única duplicidad exacta, correspondiente a `gender` y `sex_at_birth`, que contenían la misma información en todas las observaciones. Por ello, se decidió conservar `sex_at_birth`, al considerarse una denominación más clara, y eliminar `gender`.
+Una vez eliminadas las variables con varianza nula o casi nula, se evaluó la presencia de variables redundantes mediante la identificación de duplicidades exactas entre columnas. A diferencia de los análisis basados en correlación, este procedimiento permite detectar variables que contienen exactamente la misma información, incluso cuando presentan nombres distintos.
 
-```{r redundant-filtering-code}
+```{r redundant-vars-code}
 # Identificar pares de variables exactamente redundantes
 are_identical_variables <- function(x, y) {
-  identical(is.na(x), is.na(y)) && identical(as.character(x), as.character(y))
+  identical(is.na(x), is.na(y)) &&
+    identical(as.character(x), as.character(y))
 }
 
 duplicate_variable_pairs <- list()
 variable_names <- names(clinical_data_filtered)
 
 for (i in seq_along(variable_names)) {
-  if (i == 1) {
-    next
-  }
+  if (i == 1) next
 
   for (j in seq_len(i - 1)) {
     if (are_identical_variables(
@@ -584,6 +583,34 @@ for (i in seq_along(variable_names)) {
   }
 }
 
+# Mostrar la tabla de variables redundantes detectadas
+if (length(duplicate_variable_pairs) > 0) {
+
+  duplicate_variables_table <- as.data.frame(
+    do.call(rbind, duplicate_variable_pairs),
+    stringsAsFactors = FALSE
+  )
+
+  names(duplicate_variables_table) <- c(
+    "Variable_1",
+    "Variable_2"
+  )
+
+  knitr::kable(
+    duplicate_variables_table,
+    caption = "Pares de variables con duplicidad exacta detectados."
+  )
+
+} else {
+
+  cat("No se detectaron duplicidades exactas.")
+
+}
+```
+
+Tal y como se observa en la tabla anterior, con este criterio se detectó una única duplicidad exacta, correspondiente a `gender` y `sex_at_birth`, que contenían la misma información en todas las observaciones. Por ello, se decidió conservar `sex_at_birth`, al considerarse una denominación más clara, y eliminar `gender`.
+
+```{r redundant-filtering-code}
 # Conservar el nombre más informativo cuando hay duplicidad exacta
 preferred_duplicates <- c(gender = "sex_at_birth")
 
@@ -591,43 +618,42 @@ redundant_variables_to_remove <- if (length(duplicate_variable_pairs) == 0) {
   character(0)
 } else {
   unique(vapply(duplicate_variable_pairs, function(pair) {
+
     first_variable <- pair[1]
     second_variable <- pair[2]
+
     preferred_match <- preferred_duplicates[first_variable]
 
-    if (!is.na(preferred_match) && preferred_match == second_variable) {
+    if (!is.na(preferred_match) &&
+        preferred_match == second_variable) {
       first_variable
     } else {
       second_variable
     }
+
   }, character(1)))
 }
 
-clinical_data_filtered <- clinical_data_filtered[, setdiff(names(clinical_data_filtered), redundant_variables_to_remove), drop = FALSE]
-
-# Mostrar variables redundantes y recuento final
-cat("Pares de variables redundantes detectados:\n")
-if (length(duplicate_variable_pairs) > 0) {
-  print(do.call(rbind, duplicate_variable_pairs))
-} else {
-  cat("No se detectaron duplicidades exactas.\n")
-}
-
-cat("\nVariables redundantes eliminadas:\n")
-print(redundant_variables_to_remove)
+# Eliminar variables redundantes
+clinical_data_filtered <- clinical_data_filtered[
+  ,
+  setdiff(names(clinical_data_filtered),
+          redundant_variables_to_remove),
+  drop = FALSE
+]
 
 cat(
-  "\nNúmero total de variables después del filtrado de redundancia:",
+  "Número total de variables después del filtrado de redundancia:",
   ncol(clinical_data_filtered),
   "\n"
 )
 ```
 
-Tras este último paso de depuración estructural, el conjunto clínico analítico quedó reducido a 17 variables antes de la recodificación final de las variables de supervivencia y del tratamiento de los valores faltantes residuales. De este modo, la estadística descriptiva posterior se apoya en un subconjunto más compacto, menos redundante y con una variabilidad real mayor entre pacientes.
+Tras este último paso de depuración estructural, el conjunto clínico analítico quedó reducido a 17 variables antes de la recodificación final y del tratamiento de los valores faltantes residuales.
 
 #### Recodificación y tratamiento de los valores faltantes residuales
 
-Una vez completado el filtrado por ausencia, metadatos, baja variabilidad y redundancia, se revisó de nuevo el patrón de valores ausentes en las variables restantes. Esta revisión mostró una situación heterogénea. Por una parte, `days_to_death` presentaba un porcentaje elevado de valores ausentes. Sin embargo, en este caso dichos NA no respondían a pérdidas reales de información, sino a pacientes censurados que seguían vivos en el último seguimiento. Por otra parte, la mayoría de las covariables clínicas conservadas presentaba porcentajes de ausencia muy bajos, en general inferiores al 1 %, con la excepción de `follow_ups_disease_response`, que mantenía una ausencia moderada.
+Una vez completado el filtrado por ausencia, metadatos, baja variabilidad y redundancia, se revisó de nuevo el patrón de valores ausentes residuales en las variables restantes. Esta revisión mostró una situación heterogénea. Por una parte, `days_to_death` presentaba un porcentaje elevado de valores ausentes. Sin embargo, en este caso dichos NA no respondían a pérdidas reales de información, sino a pacientes censurados que seguían vivos en el último seguimiento. Por otra parte, la mayoría de las covariables clínicas conservadas presentaba porcentajes de ausencia muy bajos, en general inferiores al 1 %, con la excepción de `follow_ups_disease_response`, que mantenía una ausencia moderada.
 
 Por este motivo, se descartó aplicar una estrategia global de imputación sobre todo el conjunto clínico. Además, este planteamiento tampoco resultaba coherente con variables que ya habían sido excluidas en fases previas, como `days_to_birth`, cuya utilidad interpretativa era escasa y cuyo contenido se solapaba con `age_at_diagnosis`.
 
