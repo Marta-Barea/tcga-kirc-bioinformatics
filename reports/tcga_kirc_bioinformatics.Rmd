@@ -281,9 +281,9 @@ En las secciones siguientes se abordará el procesamiento y análisis de los dat
 
 \newpage
 
-# Análisis bioinformático del conjunto TCGA-KIRC
+# Análisis bioinformático del proyecto TCGA-KIRC
 
-## Análisis de los datos clínicos
+## Análisis del conjunto de datos clínicos
 
 ### Exploración inicial del conjunto clínico
 
@@ -716,7 +716,7 @@ cat("\nNúmero total de valores faltantes restantes:", sum(is.na(clinical_data_f
 
 Tal y como se observa en el resumen anterior, tras aplicar esta estrategia de tratamiento de los valores faltantes residuales, el conjunto clínico final quedó completamente libre de NA. En particular, la variable `death_event` quedó correctamente recodificada y la variable `survival_time` pasó a estar completa en las 537 observaciones de la cohorte. Del mismo modo, las variables categóricas con ausencia moderada quedaron recodificadas mediante categorías explícitas para los casos no informados.
 
-### Tratamiento estadístico de los datos clínicos
+### Análisis estadístico de los datos clínicos
 
 #### Estadística descriptiva
 
@@ -1365,7 +1365,7 @@ round(prob_advanced_given_high_grade * 100, 2)
 
 Los resultados mostraron que el 56.84 % de los pacientes con tumores de alto grado presentaban estadios avanzados de la enfermedad. Este resultado refuerza la asociación observada mediante la prueba $\chi^2$ y sugiere que los tumores menos diferenciados tienden a diagnosticarse en fases más avanzadas de progresión tumoral.
 
-#### Análisis de superviviencia
+### Análisis de superviviencia
 
 
 \newpage
@@ -1376,5 +1376,6 @@ Los resultados mostraron que el 56.84 % de los pacientes con tumores de alto gra
 
 # Conclusiones
 
-::: {#refs}
-:::
+\newpage
+
+\addcontentsline{toc}{section}{Bibliografía}
