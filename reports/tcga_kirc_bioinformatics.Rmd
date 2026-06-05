@@ -517,56 +517,28 @@ Tras la eliminación de variables administrativas, identificadores únicos y met
 
 #### Filtrado de variables constantes o casi constantes
 
-Una vez retirados los identificadores y metadatos, se evaluó la variabilidad de las variables restantes con el fin de detectar aquellas columnas cuya capacidad para diferenciar entre pacientes era muy limitada. Para ello se aplicó un criterio similar al que suele emplearse en el preprocesamiento de datos, eliminando tanto las variables constantes como aquellas con varianza casi nula. En términos prácticos, se descartaron las variables con un único valor no ausente y también aquellas en las que coexistían muy pocos valores distintos y un claro predominio de la categoría modal, definido mediante una razón de frecuencias superior a 19 y un porcentaje de valores únicos inferior o igual al 10 \%.
+Una vez retirados los identificadores y metadatos, y con el objetivo de reducir variables poco informativas, se eliminaron tanto las variables constantes como aquellas con varianza casi nula usando la función `nearZeroVar()` del paquete `caret` [@caret_nearzerovar]. En particular, se descartaron aquellas variables constantes y aquellas cuyo porcentaje de valores únicos no superaba el 10 % y cuya razón entre las frecuencias de las dos categorías más frecuentes era superior a 19.
 
 ```{r low-variance-filtering-code}
 # Cargar librerías necesarias
-library(dplyr)
+library(caret)
 
-# Resumir la variabilidad de cada variable
-summarize_variability <- function(column) {
-  non_missing_values <- column[!is.na(column)]
-  frequency_table <- sort(table(non_missing_values), decreasing = TRUE)
-  unique_non_missing <- length(unique(non_missing_values))
-  frequency_ratio <- if (length(frequency_table) > 1) {
-    as.numeric(frequency_table[1] / frequency_table[2])
-  } else {
-    Inf
-  }
-  percent_unique <- if (length(non_missing_values) == 0) {
-    0
-  } else {
-    100 * unique_non_missing / length(non_missing_values)
-  }
-  dominant_level_pct <- if (length(non_missing_values) == 0) {
-    NA_real_
-  } else {
-    100 * max(frequency_table) / length(non_missing_values)
-  }
-
-  data.frame(
-    unique_non_missing = unique_non_missing,
-    percent_unique = round(percent_unique, 2),
-    frequency_ratio = round(frequency_ratio, 2),
-    dominant_level_pct = round(dominant_level_pct, 2),
-    stringsAsFactors = FALSE
+# Identificar variables con varianza nula o casi nula
+near_zero_variance_vars <- names(clinical_data_filtered)[
+  nearZeroVar(
+    clinical_data_filtered,
+    freqCut = 95 / 5,
+    uniqueCut = 10,
+    saveMetrics = FALSE
   )
-}
-
-variable_variability_profile <- bind_rows(
-  lapply(clinical_data_filtered, summarize_variability),
-  .id = "variable"
-)
-
-near_zero_variance_vars <- variable_variability_profile %>%
-  filter(
-    unique_non_missing <= 1 |
-      (frequency_ratio > 19 & percent_unique <= 10)
-  ) %>%
-  pull(variable)
+]
 
 # Eliminar variables con varianza nula o casi nula
-clinical_data_filtered <- clinical_data_filtered[, setdiff(names(clinical_data_filtered), near_zero_variance_vars), drop = FALSE]
+clinical_data_filtered <- clinical_data_filtered[
+  ,
+  setdiff(names(clinical_data_filtered), near_zero_variance_vars),
+  drop = FALSE
+]
 
 # Mostrar variables eliminadas y recuento final
 cat("Variables eliminadas por varianza nula o casi nula:\n")
@@ -1287,6 +1259,10 @@ print(kruskal_age_grade_results)
 ```
 
 De acuerdo con los resultados obtenidos, no se detectaron diferencias estadísticamente significativas en la edad al diagnóstico entre los distintos grados tumorales (p = 0.3654), lo que sugiere que las edades fueron comparables entre los grupos.
+
+### Análisis de superviviencia
+
+
 
 \newpage
 
