@@ -57,7 +57,7 @@ El carcinoma renal de células claras constituye el subtipo histológico más fr
 
 Partiendo de esta motivación, se plantea la implementación de una estrategia bioinformática orientada al análisis exploratorio e integrativo de datos clínicos y transcriptómicos de pacientes diagnosticados de KIRC. Este enfoque permite aplicar de manera práctica conceptos fundamentales abordados durante la asignatura, incluyendo la adquisición y gestión de datos biomédicos, el preprocesamiento de información de alta dimensionalidad, el análisis estadístico de datos complejos, la visualización de resultados y la interpretación biológica de los hallazgos obtenidos.
 
-Asimismo, el desarrollo de este trabajo constituye una oportunidad para poner en práctica metodologías reproducibles de análisis de datos, un aspecto esencial en la investigación bioinformática actual. La capacidad para combinar herramientas computacionales, técnicas estadísticas y conocimientos biológicos resulta indispensable para transformar grandes volúmenes de datos ómicos en conocimiento útil y científicamente relevante.
+Asimismo, el desarrollo de este trabajo constituye una oportunidad para poner en práctica metodologías reproducibles de análisis de datos, un aspecto esencial en la investigación bioinformática. La capacidad para combinar herramientas computacionales, técnicas estadísticas y conocimientos biológicos resulta indispensable para transformar grandes volúmenes de datos ómicos en conocimiento útil y científicamente relevante.
 
 En consecuencia, el objetivo de esta memoria no se limita únicamente a la obtención de resultados sobre un caso de estudio concreto, sino que persigue demostrar la adquisición de las competencias desarrolladas a lo largo de la asignatura, mediante la construcción de un flujo de trabajo reproducible y fundamentado metodológicamente. De este modo, se pretende evidenciar el potencial de las herramientas de análisis de datos para generar conocimiento sobre los mecanismos moleculares asociados al carcinoma renal de células claras y contribuir a una mejor comprensión de esta patología desde una perspectiva bioinformática.
 
@@ -67,7 +67,7 @@ En consecuencia, el objetivo de esta memoria no se limita únicamente a la obten
 
 \newpage
 
-# Materiales y Método
+# Materiales y Métodos
 
 \newpage
 
@@ -655,7 +655,7 @@ Tras este último paso de depuración estructural, el conjunto clínico analíti
 
 Una vez completado el filtrado por ausencia, metadatos, baja variabilidad y redundancia, se revisó de nuevo el patrón de valores ausentes residuales en las variables restantes. Esta revisión mostró una situación heterogénea. Por una parte, `days_to_death` presentaba un porcentaje elevado de valores ausentes. Sin embargo, en este caso dichos NA no respondían a pérdidas reales de información, sino a pacientes censurados que seguían vivos en el último seguimiento. Por otra parte, la mayoría de las covariables clínicas conservadas presentaba porcentajes de ausencia muy bajos, en general inferiores al 1 %, con la excepción de `follow_ups_disease_response`, que mantenía una ausencia moderada.
 
-En primer lugar, `days_to_death` se recodificó en una variable de evento, `death_event`, y en una variable de tiempo de supervivencia, `survival_time`, considerando sus valores ausentes como observaciones censuradas. A continuación, los pocos valores faltantes restantes se trataron de forma específica según la naturaleza de cada variable. La variable `age_at_diagnosis`, que presentaba una única ausencia, se completó mediante la mediana. En las variables categóricas `follow_ups_disease_response` y `ajcc_pathologic_stage`, los NA se recodificaron como `Unknown`, mientras que en `tumor_grade` y `ajcc_pathologic_m` se emplearon `GX` y `MX`, respectivamente, con el fin de mantener una codificación coherente con la nomenclatura clínica ya presente en el conjunto. De este modo, se evitó introducir un tratamiento innecesariamente complejo en un escenario donde la ausencia residual era limitada y clínicamente interpretable.
+En primer lugar, `days_to_death` se recodificó en una variable de evento, `death_event`, codificada como 1 en pacientes fallecidos y 0 en pacientes censurados, y en una variable de tiempo de supervivencia, `survival_time`, definida como el tiempo hasta la muerte cuando el evento ocurrió y como el tiempo hasta el último seguimiento (`days_to_last_follow_up`) cuando el paciente permanecía vivo. De este modo, `survival_time` pasó a recoger en una sola variable el tiempo observado necesario para los análisis de supervivencia, por lo que `days_to_last_follow_up` se conservó únicamente como variable auxiliar durante la recodificación y no en el conjunto analítico final. Para facilitar la interpretación clínica posterior, la edad al diagnóstico (`age_at_diagnosis`) se expresó en años y el tiempo de supervivencia (`survival_time`) en meses. A continuación, los pocos valores faltantes restantes se trataron de forma específica según la naturaleza de cada variable. La variable `age_at_diagnosis`, que presentaba una única ausencia, se completó mediante la mediana antes de la conversión de unidades. En las variables categóricas `follow_ups_disease_response` y `ajcc_pathologic_stage`, los NA se recodificaron como `Unknown`, mientras que en `tumor_grade` y `ajcc_pathologic_m` se emplearon `GX` y `MX`, respectivamente, con el fin de mantener una codificación coherente con la nomenclatura clínica ya presente en el conjunto. De este modo, se evitó introducir un tratamiento innecesariamente complejo en un escenario donde la ausencia residual era limitada y clínicamente interpretable.
 
 ```{r missing-data-treatment-code}
 # Cargar librerías necesarias
@@ -666,6 +666,9 @@ library(tidyr)
 age_at_diagnosis_median <- as.integer(
   median(clinical_data_filtered$age_at_diagnosis, na.rm = TRUE)
 )
+
+days_per_year <- 365.25
+days_per_month <- days_per_year / 12
 
 # Recodificar supervivencia y tratar de forma dirigida los NA residuales
 clinical_data_final <- clinical_data_filtered %>%
@@ -680,7 +683,8 @@ clinical_data_final <- clinical_data_filtered %>%
       is.na(age_at_diagnosis),
       age_at_diagnosis_median,
       age_at_diagnosis
-    ),
+    ) / days_per_year,
+    survival_time = survival_time / days_per_month,
     follow_ups_disease_response = replace_na(
       follow_ups_disease_response,
       "Unknown"
@@ -692,7 +696,7 @@ clinical_data_final <- clinical_data_filtered %>%
     tumor_grade = replace_na(tumor_grade, "GX"),
     ajcc_pathologic_m = replace_na(ajcc_pathologic_m, "MX")
   ) %>%
-  select(-days_to_death)
+  select(-days_to_death, -days_to_last_follow_up)
 
 # Comprobar el resultado del tratamiento de NA
 remaining_missing_summary <- clinical_data_final %>%
@@ -716,7 +720,7 @@ Tal y como se observa en el resumen anterior, tras aplicar esta estrategia de tr
 
 #### Estadística descriptiva
 
-Una vez completado el proceso de filtrado, recodificación y tratamiento de los valores faltantes en el conjunto clínico, se procedió a realizar un análisis estadístico descriptivo con el objetivo de caracterizar la distribución de las variables clínicas y demográficas en la cohorte TCGA-KIRC. El conjunto finalmente utilizado en esta fase quedó integrado por 18 variables, de las cuales 13 eran categóricas y 5 numéricas, tras incorporar `death_event` y `survival_time` y retirar `days_to_death`.
+Una vez completado el proceso de filtrado, recodificación y tratamiento de los valores faltantes en el conjunto clínico, se procedió a realizar un análisis estadístico descriptivo con el objetivo de caracterizar la distribución de las variables clínicas y demográficas en la cohorte TCGA-KIRC. El conjunto finalmente utilizado en esta fase quedó integrado por 17 variables, de las cuales 13 eran categóricas y 4 numéricas, tras incorporar `death_event` y `survival_time` y retirar las variables fuente `days_to_death` y `days_to_last_follow_up`, ya integradas en la nueva codificación de supervivencia.
 
 ##### Variables categóricas
 
@@ -749,10 +753,18 @@ cat_table <- CreateCatTable(
   includeNA = FALSE
 )
 
+escape_latex_text <- function(text) {
+  text <- str_replace_all(text, "\\\\", "\\\\textbackslash{}")
+  text <- str_replace_all(text, "([#$%&{}])", "\\\\\\1")
+  text <- str_replace_all(text, "~", "\\\\textasciitilde{}")
+  text <- str_replace_all(text, "\\^", "\\\\textasciicircum{}")
+  text
+}
+
 categorical_summary <- bind_rows(lapply(names(cat_table$Overall), function(var_name) {
   as_tibble(cat_table$Overall[[var_name]]) %>%
     transmute(
-      variable = str_replace_all(var_name, "_", " "),
+      variable = var_name,
       categoria = as.character(level),
       frecuencia = as.integer(freq),
       frecuencia_relativa = round(as.numeric(percent), 2)
@@ -771,10 +783,19 @@ categorical_summary <- bind_rows(lapply(names(cat_table$Overall), function(var_n
   ungroup() %>%
   select(variable, moda, categoria, frecuencia, frecuencia_relativa, es_moda)
 
+categorical_table_data <- categorical_summary %>%
+  mutate(
+    variable = str_replace_all(escape_latex_text(variable), "_", "\\\\_ "),
+    moda = str_replace_all(escape_latex_text(moda), "_", "\\\\_"),
+    categoria = str_replace_all(escape_latex_text(categoria), "_", "\\\\_"),
+    es_moda = escape_latex_text(es_moda)
+  )
+
 # Preparar la tabla en formato LaTeX
 categorical_table_latex <- kable(
-  categorical_summary,
+  categorical_table_data,
   format = "latex",
+  escape = FALSE,
   booktabs = TRUE,
   longtable = TRUE,
   linesep = "",
@@ -787,10 +808,10 @@ categorical_table_latex <- kable(
     "Moda",
     "Categoría",
     "Frec. abs.",
-    "Frec. rel. (%)",
+    "Frec. rel. (\\%)",
     "Es moda"
   ),
-  align = c("l", "c", "l", "r", "r", "c")
+  align = c("c", "c", "l", "r", "r", "c")
 ) %>%
   kable_styling(
     latex_options = "hold_position",
@@ -842,7 +863,7 @@ categorical_plot_data <- categorical_summary %>%
     categoria = factor(categoria_id, levels = rev(unique(categoria_id)))
   ) %>%
   ungroup() %>%
-  mutate(variable = factor(variable, levels = str_replace_all(categorical_vars, "_", " ")))
+  mutate(variable = factor(variable, levels = categorical_vars))
 
 # Definir colores para destacar la categoría modal
 mode_colors <- c(
@@ -900,7 +921,7 @@ plot_categorica_individual <- function(data, variable_name, show_legend = FALSE)
 plot_categoricas <- function(data) {
   variable_levels <- levels(data$variable)
   row_indices <- split(seq_along(variable_levels), ceiling(seq_along(variable_levels) / 2))
-  problematic_variables <- c("ajcc pathologic t", "tobacco smoking status")
+  problematic_variables <- c("ajcc_pathologic_t", "tobacco_smoking_status")
 
   legend_plot <- plot_categorica_individual(data, variable_levels[1], show_legend = TRUE)
   shared_legend <- cowplot::get_legend(legend_plot)
@@ -952,11 +973,6 @@ plot_categoricas <- function(data) {
 }
 ```
 
-```{r categorical-descriptive-plot, fig.width=13.0, fig.height=19.8, fig.align='center', out.width='97%', out.height='0.94\\textheight', fig.pos='p', fig.cap='Distribución de frecuencias relativas de las variables categóricas del conjunto de datos clínico TCGA-KIRC.'}
-# Mostrar la figura combinada de todas las variables categóricas
-plot_categoricas(categorical_plot_data)
-```
-
 Como puede observarse en la Figura \ref{fig:categorical-descriptive-plot}, las distribuciones gráficas son coherentes con los resultados resumidos en la Tabla \ref{tab:categorical-descriptive-statistics}. El gráfico permite identificar con mayor facilidad qué rasgos clínicos concentran las principales diferencias observadas dentro de la cohorte. En este sentido, se aprecia el predominio del estadio patológico I, la elevada frecuencia de determinadas categorías de la variable T, la concentración de los casos en NX o N0 y la mayor presencia de tumores no metastásicos.
 
 Desde el punto de vista demográfico, la población analizada sigue mostrando un predominio de pacientes de sexo masculino, de raza blanca y de origen no hispano o latino. Asimismo, la variable `vital_status` refleja una mayor proporción de pacientes vivos al cierre del seguimiento, mientras que `follow_ups_disease_response` apunta también hacia un predominio de pacientes libres de tumor.
@@ -964,6 +980,12 @@ Desde el punto de vista demográfico, la población analizada sigue mostrando un
 La figura también permite apreciar qué variables mantienen distribuciones muy concentradas, aunque ya no extremas, como ocurre con `prior_malignancy`, y cuáles conservan una mayor heterogeneidad, como sucede con la estadificación tumoral, el grado histológico o el tabaquismo. En conjunto, esta visualización complementa la interpretación descriptiva del subconjunto clínico final analizado en este trabajo.
 
 En general, este patrón descriptivo es coherente con las características clínicas de la cohorte estudiada y confirma que el conjunto de variables seleccionado es adecuado para realizar los análisis posteriores. Las variables conservadas presentan un nivel de completitud aceptable y, además, incluyen información relevante sobre la enfermedad, como la extensión del tumor, el grado de agresividad histológica, el estado vital de los pacientes y diversos factores demográficos y clínicos. 
+
+```{r categorical-descriptive-plot, fig.width=13.0, fig.height=19.8, fig.align='center', out.width='97%', out.height='0.94\\textheight', fig.pos='p', fig.cap='Distribución de frecuencias relativas de las variables categóricas del conjunto de datos clínico TCGA-KIRC.'}
+# Mostrar la figura combinada de todas las variables categóricas
+plot_categoricas(categorical_plot_data)
+```
+
 \newpage
 
 ##### Variables continuas
@@ -1043,17 +1065,17 @@ continuous_table_latex <- kable(
 cat(continuous_table_latex)
 ```
 
-A la vista de los resultados presentados en la Tabla \ref{tab:continuous-descriptive-statistics}, la cohorte TCGA-KIRC estuvo compuesta mayoritariamente por pacientes de edad avanzada, con una edad media al diagnóstico (`age_at_diagnosis`) de 22 301.88 días, equivalente aproximadamente a 61,1 años, y una mediana de 22 322 días. La dispersión observada (IQR = 6593 días) refleja una variabilidad moderada en la edad de los pacientes incluidos en el estudio.
+A la vista de los resultados presentados en la Tabla \ref{tab:continuous-descriptive-statistics}, la cohorte TCGA-KIRC estuvo compuesta mayoritariamente por pacientes de edad avanzada, con una edad media al diagnóstico (`age_at_diagnosis`) de 61,06 años y una mediana de 61,11 años. La dispersión observada (IQR = 18,05 años) refleja una variabilidad moderada en la edad de los pacientes incluidos en el estudio.
 
 Asimismo, el año de diagnóstico (`year_of_diagnosis`) se concentró principalmente en torno a 2006 (mediana = 2006; IQR = 3 años), lo que indica que la mayor parte de los casos fueron diagnosticados durante la primera década de los años 2000.
 
-En relación con las variables de seguimiento, tanto el tiempo hasta el último seguimiento (`days_to_last_follow_up`) como el tiempo de supervivencia (`survival_time`) presentaron una mediana de 1175 días y un rango intercuartílico de 1389 días, evidenciando una considerable heterogeneidad en la duración del seguimiento clínico. En esta cohorte ambos resúmenes resultaron idénticos tras la recodificación de supervivencia, lo que refuerza la coherencia interna del tratamiento aplicado a `days_to_death` y `days_to_last_follow_up`.
+En relación con las variables de seguimiento, el tiempo de supervivencia observado (`survival_time`) presentó una mediana de 38,6 meses y un rango intercuartílico de 45,63 meses, lo que evidencia una considerable heterogeneidad en la duración del seguimiento clínico y del tiempo hasta el evento o la censura entre pacientes. Expresar esta variable en meses facilita su interpretación clínica y conserva una resolución más informativa que una escala en años para los análisis de supervivencia posteriores. Esta variable resume en una única medida el tiempo observado para cada individuo y constituye, junto con `death_event`, la base adecuada para los análisis de supervivencia posteriores.
 
 Por último, la variable de evento (`death_event`) mostró una media de 0.33, lo que sugiere que aproximadamente un tercio de los pacientes experimentaron el evento de interés durante el periodo de observación, mientras que los restantes permanecieron vivos o censurados al finalizar el seguimiento.
 
-Con el fin de complementar la información presentada, en la Figura \ref{fig:continuous-descriptive-plots} se representaron gráficamente las distribuciones de las variables continuas mediante diagramas de violín, incorporando además diagramas de caja internos para visualizar la mediana, el rango intercuartílico y los valores atípicos. Se excluyó de esta representación gráfica `death_event`, por tratarse de una variable binaria. Estas gráficas facilitan la interpretación visual de la distribución y dispersión de las principales variables continuas en la cohorte TCGA-KIRC.
+Con el fin de complementar la información presentada, en la Figura \ref{fig:continuous-descriptive-plots-figure} se representaron gráficamente las distribuciones de las variables continuas mediante diagramas de violín, incorporando además diagramas de caja internos para visualizar la mediana, el rango intercuartílico y los valores atípicos. Se excluyó de esta representación gráfica `death_event`, por tratarse de una variable binaria. Estas gráficas facilitan la interpretación visual de la distribución y dispersión de las principales variables continuas en la cohorte TCGA-KIRC.
 
-```{r continuous-descriptive-plots, fig.width=10, fig.height=7.5, fig.align='center', out.width='100%', out.height='0.9\\textheight', fig.pos='p', fig.cap='Distribución de las variables continuas del conjunto de datos clínico TCGA-KIRC representada mediante diagrama de violín.'}
+```{r continuous-descriptive-plots}
 # Cargar librerías necesarias
 library(ggplot2)
 library(dplyr)
@@ -1113,7 +1135,7 @@ p1 <- continuous_plot_data %>%
   labs(
     title = "age_at_diagnosis",
     x = NULL,
-    y = "Días"
+    y = "Años"
   ) +
   violin_theme
 
@@ -1147,38 +1169,8 @@ p2 <- continuous_plot_data %>%
   ) +
   violin_theme
 
-# days_to_last_follow_up
-p3 <- continuous_plot_data %>%
-  filter(variable == "days_to_last_follow_up") %>%
-  ggplot(aes(x = "", y = value)) +
-  geom_violin(
-    fill = "#0B7285",
-    color = "#0B7285",
-    alpha = 0.85,
-    trim = FALSE,
-    adjust = 1.2,
-    linewidth = 0.4
-  ) +
-  geom_boxplot(
-    width = 0.08,
-    fill = "white",
-    color = "black",
-    linewidth = 0.5,
-    outlier.shape = 21,
-    outlier.size = 1.8,
-    outlier.stroke = 0.3,
-    outlier.fill = "#A2DA37",
-    outlier.color = "black"
-  ) +
-  labs(
-    title = "days_to_last_follow_up",
-    x = NULL,
-    y = "Días"
-  ) +
-  violin_theme
-
 # survival_time
-p4 <- continuous_plot_data %>%
+p3 <- continuous_plot_data %>%
   filter(variable == "survival_time") %>%
   ggplot(aes(x = "", y = value)) +
   geom_violin(
@@ -1203,26 +1195,30 @@ p4 <- continuous_plot_data %>%
   labs(
     title = "survival_time",
     x = NULL,
-    y = "Días"
+    y = "Meses"
   ) +
   violin_theme
-
-# Figura combinada
-(p1 | p2) /
-(p3 | p4)
 ```
               
-Los diagramas de violín de la Figura \ref{fig:continuous-descriptive-plots} ofrecen una visión directa de la forma y la dispersión de las principales variables continuas de la cohorte TCGA-KIRC. En ellos se aprecia que `age_at_diagnosis` se concentra en torno a valores intermedios, mientras que `year_of_diagnosis` reúne la mayor densidad de observaciones entre 2004 y 2007, en consonancia con el periodo en el que se registró la mayor parte de los casos incluidos en el estudio.
 
-En cambio, las variables `days_to_last_follow_up` y `survival_time` presentan una mayor amplitud y una distribución asimétrica, lo que pone de manifiesto la heterogeneidad de los tiempos de seguimiento y supervivencia entre pacientes. También se identifican algunos valores atípicos, especialmente en estas dos variables, asociados a casos con periodos de observación o supervivencia notablemente más prolongados que los del resto de la cohorte. 
+Los diagramas de violín de la Figura \ref{fig:continuous-descriptive-plots-figure} ofrecen una visión directa de la forma y la dispersión de las principales variables continuas de la cohorte TCGA-KIRC. En ellos se aprecia que `age_at_diagnosis`, expresada en años, se concentra en torno a valores intermedios, mientras que `year_of_diagnosis` reúne la mayor densidad de observaciones entre 2004 y 2007, en consonancia con el periodo en el que se registró la mayor parte de los casos incluidos en el estudio.
 
-En conjunto, estas gráficas permiten comprobar que las variables continuas del conjunto clínico no siguen un único patrón de distribución. Mientras algunas, como `age_at_diagnosis`, presentan una dispersión más contenida, otras, como `days_to_last_follow_up` y `survival_time`, muestran una variabilidad mucho mayor entre pacientes. Esta diferencia resulta útil como referencia para los análisis posteriores, ya que ayuda a contextualizar mejor la heterogeneidad clínica presente en la cohorte TCGA-KIRC.
+En cambio, la variable `survival_time`, expresada en meses, presenta una mayor amplitud y una distribución asimétrica, lo que pone de manifiesto la heterogeneidad del tiempo observado hasta el evento o la censura entre pacientes. También se identifican algunos valores atípicos asociados a casos con periodos de observación o supervivencia notablemente más prolongados que los del resto de la cohorte. 
 
-#### Análisis exploratorio de diferencias en la edad al diagnóstico
+En conjunto, estas gráficas permiten comprobar que las variables continuas del conjunto clínico no siguen un único patrón de distribución. Mientras algunas, como `age_at_diagnosis`, presentan una dispersión más contenida, otras, como `survival_time`, muestran una variabilidad mucho mayor entre pacientes. Esta diferencia resulta útil como referencia para los análisis posteriores, ya que ayuda a contextualizar mejor la heterogeneidad clínica presente en la cohorte TCGA-KIRC.
+
+```{r continuous-descriptive-plots-figure, fig.width=7.5, fig.height=6.5, fig.align='center', out.width='90%', fig.pos='H', fig.cap='Distribución de las variables continuas del conjunto de datos clínico TCGA-KIRC representada mediante diagrama de violín.'}
+# Figura combinada
+(p1 | p2) /
+(p3 | patchwork::plot_spacer())
+```
+
+
+#### Asociación entre la edad al diagnóstico y las características clinicopatológicas
 
 Con el fin de caracterizar la población de estudio e identificar posibles diferencias iniciales entre grupos, se realizó un análisis exploratorio de las variables clínicas de interés. En particular, se evaluó la asociación entre la edad al diagnóstico y las características clínicas de los pacientes mediante contrastes de hipótesis. 
 
-##### Diferencias en la edad al diagnóstico entre los estadios patológicos AJCC 
+##### Edad al diagnóstico según el estadio patológico AJCC 
 
 Antes de comparar la edad al diagnóstico (`age_at_diagnosis`) entre los grupos definidos por el estadio patológico AJCC (`ajcc_pathologic_stage`), se verificó el cumplimiento de los supuestos de normalidad y homogeneidad de varianzas requeridos para las pruebas paramétricas, como Análisis de la Varianza (ANOVA). Para ello, se utilizaron las pruebas de Shapiro-Wilk y Levene, respectivamente.
 
@@ -1254,7 +1250,7 @@ print(kruskal_age_ajcc_results)
 
 De acuerdo con los resultados obtenidos, no se detectaron diferencias estadísticamente significativas en la edad al diagnóstico entre los distintos estadios patológicos AJCC (p= 0.060), lo que indica que las edades fueron comparables entre los grupos.
 
-##### Diferencias en la edad al diagnóstico entre el grado tumoral 
+##### Edad al diagnóstico según el grado tumoral
 
 De forma similar al análisis anterior, se verificaron los supuestos de normalidad y homogeneidad de varianzas para la edad al diagnóstico según el grado tumoral (`tumor_grade`). 
 
@@ -1284,8 +1280,92 @@ print(kruskal_age_grade_results)
 
 De acuerdo con los resultados obtenidos, no se detectaron diferencias estadísticamente significativas en la edad al diagnóstico entre los distintos grados tumorales (p = 0.3654), lo que sugiere que las edades fueron comparables entre los grupos.
 
-### Análisis de superviviencia
+#### Asociación entre el grado tumoral y el estadio patológico AJCC
 
+Con el objetivo de explorar la relación entre dos de las principales variables clinicopatológicas de la cohorte, se evaluó la asociación entre el grado tumoral (`tumor_grade`) y el estadio patológico AJCC (`ajcc_pathologic_stage`). En este sentido, mientras que el grado tumoral describe el nivel de diferenciación celular, el estadio AJCC resume la extensión anatómica de la enfermedad. Para analizar esta relación se construyó una tabla de contingencia y se aplicó la prueba $\chi^2$ de independencia.
+
+```{r grade-ajcc-contingency-table-chi-squared}
+# Construir tabla de contingencia 
+tabla_grade_stage <- table(clinical_data_final$tumor_grade, clinical_data_final$ajcc_pathologic_stage) 
+
+# Mostrar tabla de contingencia 
+print(tabla_grade_stage)
+
+#Prueba chi-cuadrado de independencia 
+chisq_grade_stage <- chisq.test(tabla_grade_stage) 
+print(chisq_grade_stage)
+```
+
+De acuerdo con los resultados obtenidos, se observó una asociación estadísticamente significativa entre el grado tumoral y el estadio patológico AJCC (χ² = 158.06, df = 16, p < 0.001). De manera específica, se observó que los tumores de bajo grado (G1) se concentraron principalmente en los estadios I y II, mientras que los tumores de alto grado (G3-G4) mostraron una mayor representación en los estadios III y IV. Este patrón sugiere que el grado de diferenciación celular puede estar relacionado con la extensión anatómica de la enfermedad al momento del diagnóstico.
+
+Esta asociación se puede visualizar mediante un gráfico (Figura \ref{fig:grade-ajcc-stacked-bar-plot}) de barras apiladas que muestra la distribución de los grados tumorales dentro de cada estadio AJCC.
+
+```{r grade-ajcc-stacked-bar-plot, fig.width=7.5, fig.height=3.2, fig.align='center', out.width='90%', fig.pos='H', fig.cap='Gráfico de barras apiladas que muestra la distribución de los grados tumorales dentro de cada estadio patológico AJCC.'}
+# Cargar librerías necesarias
+library(ggplot2)
+library(dplyr)
+
+# Preparar los datos para el gráfico de barras apiladas
+grade_stage_data <- as.data.frame(tabla_grade_stage) %>%
+  rename(
+    tumor_grade = Var1,
+    ajcc_pathologic_stage = Var2,
+    count = Freq
+  ) %>%
+  group_by(ajcc_pathologic_stage) %>%
+  mutate(
+    total_stage = sum(count),
+    proportion = count / total_stage
+  ) %>%
+  ungroup()
+
+# Paleta de colores personalizada para los grados tumorales
+grade_colors <- c(
+  "G1" = "#470E61",
+  "G2" = "#404688",
+  "G3" = "#0B7285",
+  "G4" = "#31B57B"
+)
+
+# Crear el gráfico de barras apiladas
+ggplot(grade_stage_data, aes(x = ajcc_pathologic_stage, y = proportion, fill = tumor_grade)) +
+  geom_bar(stat = "identity", color = "white", width = 0.7) +
+  scale_fill_manual(values = grade_colors, name = "Grado tumoral") +
+  labs(
+    title = "",
+    x = "Estadio patológico AJCC",
+    y = "Proporción de pacientes"
+  ) +
+  theme_minimal(base_size = 10) +
+  theme(
+    axis.text.x = element_text(size = 8, angle = 0, hjust = 0.5),
+    axis.text.y = element_text(size = 8),
+    axis.title = element_text(size = 9),
+    legend.title = element_text(size = 9),
+    legend.text = element_text(size = 8),
+    legend.position = "right"
+  )
+```
+
+Con el fin de complementar la interpretación de la asociación observada, se calcularon probabilidades condicionadas a partir de la tabla de contingencia. En particular, se estimó la probabilidad de presentar enfermedad avanzada (estadios III-IV) entre los pacientes con tumores de alto grado (G3-G4), abordando así la cuestión de qué proporción de estos pacientes se encuentra en fases avanzadas de la enfermedad.
+
+```{r grade-ajcc-conditional-probabilities}
+# Definir grados tumorales altos y estadios avanzados 
+high_grade <- c("G3", "G4") 
+advanced_stage <- c("Stage III", "Stage IV") 
+
+# Calcular probabilidad condicionada
+prob_advanced_given_high_grade <- sum( 
+  tabla_grade_stage[high_grade, advanced_stage] 
+  ) / sum(tabla_grade_stage[high_grade, ]) 
+
+# Expresarlo en porcentaje 
+round(prob_advanced_given_high_grade * 100, 2)
+```
+
+Los resultados mostraron que el 56.84 % de los pacientes con tumores de alto grado presentaban estadios avanzados de la enfermedad. Este resultado refuerza la asociación observada mediante la prueba $\chi^2$ y sugiere que los tumores menos diferenciados tienden a diagnosticarse en fases más avanzadas de progresión tumoral.
+
+#### Análisis de superviviencia
 
 
 \newpage
