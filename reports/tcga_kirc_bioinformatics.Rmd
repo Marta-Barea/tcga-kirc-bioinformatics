@@ -484,16 +484,18 @@ No obstante, se ha decidido conservar la variable `days_to_death`, a pesar de su
 
 #### Filtrado de variables administrativas, identificadores únicos y metadatos no relevantes para el análisis
 
-Además del filtrado de variables con alto porcentaje de valores faltantes, se decidió eliminar aquellas variables que, aunque no presentaban un elevado porcentaje de NA, correspondían a información administrativa o de identificación, como `submitter_id`, `diagnosis_id`, `exposure_id`, `demographic_id`, `bcr_patient_barcode`, `updated_datetime` y `project`, debido a que no aportan información clínica o biológica relevante.
+Además del filtrado de variables con alto porcentaje de valores faltantes, se decidió eliminar aquellas variables que, aunque no presentaban un elevado porcentaje de NA, correspondían a información administrativa o de identificación, como `submitter_id`, `diagnosis_id`, `exposure_id`, `demographic_id`, `updated_datetime` y `project`, debido a que no aportan información clínica o biológica relevante para el análisis estadístico. Como excepción, se conservó `bcr_patient_barcode` como identificador auxiliar de paciente para facilitar el cruce posterior con los datos transcriptómicos y mantener la trazabilidad entre fuentes.
 
 ```{r administrative-filtering-code}
+# Definir identificadores auxiliares que se conservan fuera del análisis estadístico
+identifier_vars <- c("bcr_patient_barcode")
+
 # Definir variables administrativas a eliminar
 variables_to_remove <- c(
   "submitter_id",
   "diagnosis_id",
   "exposure_id",
   "demographic_id",
-  "bcr_patient_barcode",
   "updated_datetime",
   "project",
   "state",
@@ -513,7 +515,7 @@ cat("\nNúmero total de variables después del filtrado administrativo:", ncol(c
 print(names(clinical_data_filtered))
 ```
 
-Tras la eliminación de variables administrativas, identificadores únicos y metadatos no relevantes para el estudio, el conjunto clínico quedó reducido a 30 variables. Aunque este subconjunto ya excluía campos ajenos al objetivo del análisis, todavía conservaba algunas variables con muy poca variabilidad y cierta información duplicada. Por ello, antes de pasar a la estadística descriptiva, se consideró necesario aplicar una depuración adicional.
+Tras la eliminación de variables administrativas, identificadores únicos y metadatos no relevantes para el estudio, el conjunto clínico quedó reducido a 31 variables. Entre ellas se mantuvo `bcr_patient_barcode` exclusivamente como identificador técnico de paciente. Aunque este subconjunto ya excluía campos ajenos al objetivo del análisis, todavía conservaba algunas variables con muy poca variabilidad y cierta información duplicada. Por ello, antes de pasar a la estadística descriptiva, se consideró necesario aplicar una depuración adicional.
 
 #### Filtrado de variables constantes o casi constantes
 
@@ -523,10 +525,13 @@ Una vez retirados los identificadores y metadatos, y con el objetivo de reducir 
 # Cargar librerías necesarias
 library(caret)
 
+# Excluir identificadores auxiliares del filtrado por baja variabilidad
+analysis_vars_for_nzv <- setdiff(names(clinical_data_filtered), identifier_vars)
+
 # Identificar variables con varianza nula o casi nula
-near_zero_variance_vars <- names(clinical_data_filtered)[
+near_zero_variance_vars <- analysis_vars_for_nzv[
   nearZeroVar(
-    clinical_data_filtered,
+    clinical_data_filtered[, analysis_vars_for_nzv, drop = FALSE],
     freqCut = 95 / 5,
     uniqueCut = 10,
     saveMetrics = FALSE
@@ -551,7 +556,7 @@ cat(
 )
 ```
 
-Como resultado de este procedimiento, se eliminaron 12 variables con escasa o nula capacidad informativa y el conjunto se redujo de 30 a 18 variables. Entre las variables descartadas se encontraban varias columnas completamente constantes, como `tissue_or_organ_of_origin`, `classification_of_tumor`, `site_of_resection_or_biopsy`, `diagnosis_is_primary_disease`, `days_to_diagnosis`, `icd_10_code` y `exposure_type`, junto con otras variables casi invariantes, entre ellas `primary_diagnosis`, `morphology`, `prior_treatment`, `synchronous_malignancy` y `age_is_obfuscated`. En conjunto, se trataba de variables que apenas aportaban diferenciación entre pacientes y que, por tanto, tenían una utilidad muy limitada para la descripción posterior de la cohorte.
+Como resultado de este procedimiento, se eliminaron 12 variables con escasa o nula capacidad informativa y el conjunto se redujo de 31 a 19 variables. Entre las variables descartadas se encontraban varias columnas completamente constantes, como `tissue_or_organ_of_origin`, `classification_of_tumor`, `site_of_resection_or_biopsy`, `diagnosis_is_primary_disease`, `days_to_diagnosis`, `icd_10_code` y `exposure_type`, junto con otras variables casi invariantes, entre ellas `primary_diagnosis`, `morphology`, `prior_treatment`, `synchronous_malignancy` y `age_is_obfuscated`. El identificador `bcr_patient_barcode` se conservó independientemente de este filtrado, ya que se emplea para la integración y trazabilidad de los datos, y no como variable analítica. En conjunto, se trataba de variables que apenas aportaban diferenciación clínica entre pacientes y que, por tanto, tenían una utilidad muy limitada para la descripción posterior de la cohorte.
 
 #### Filtrado de variables redundantes
 
@@ -565,7 +570,7 @@ are_identical_variables <- function(x, y) {
 }
 
 duplicate_variable_pairs <- list()
-variable_names <- names(clinical_data_filtered)
+variable_names <- setdiff(names(clinical_data_filtered), identifier_vars)
 
 for (i in seq_along(variable_names)) {
   if (i == 1) next
@@ -649,7 +654,7 @@ cat(
 )
 ```
 
-Tras este último paso de depuración estructural, el conjunto clínico analítico quedó reducido a 17 variables antes de la recodificación final y del tratamiento de los valores faltantes residuales.
+Tras este último paso de depuración estructural, el conjunto clínico quedó reducido a 18 variables antes de la recodificación final y del tratamiento de los valores faltantes residuales. De ellas, 17 correspondían a variables analíticas y una al identificador `bcr_patient_barcode`, que se conservó con fines de trazabilidad.
 
 #### Recodificación y tratamiento de los valores faltantes residuales
 
@@ -720,7 +725,7 @@ Tal y como se observa en el resumen anterior, tras aplicar esta estrategia de tr
 
 #### Estadística descriptiva
 
-Una vez completado el proceso de filtrado, recodificación y tratamiento de los valores faltantes en el conjunto clínico, se procedió a realizar un análisis estadístico descriptivo con el objetivo de caracterizar la distribución de las variables clínicas y demográficas en la cohorte TCGA-KIRC. El conjunto finalmente utilizado en esta fase quedó integrado por 17 variables, de las cuales 13 eran categóricas y 4 numéricas, tras incorporar `death_event` y `survival_time` y retirar las variables fuente `days_to_death` y `days_to_last_follow_up`, ya integradas en la nueva codificación de supervivencia.
+Una vez completado el proceso de filtrado, recodificación y tratamiento de los valores faltantes en el conjunto clínico, se procedió a realizar un análisis estadístico descriptivo con el objetivo de caracterizar la distribución de las variables clínicas y demográficas en la cohorte TCGA-KIRC. El objeto clínico final quedó integrado por 18 variables. No obstante, en esta fase se utilizaron 17 variables analíticas, de las cuales 13 eran categóricas y 4 numéricas, ya que `bcr_patient_barcode` se reservó exclusivamente como identificador auxiliar. Este recuento analítico se obtuvo tras incorporar `death_event` y `survival_time` y retirar las variables fuente `days_to_death` y `days_to_last_follow_up`, ya integradas en la nueva codificación de supervivencia.
 
 ##### Variables categóricas
 
@@ -736,7 +741,8 @@ library(tableone)
 # Identificar variables categóricas del conjunto de datos clínico
 categorical_vars <- names(
   clinical_data_final %>%
-    select(where(~ is.character(.x) || is.factor(.x) || is.logical(.x)))
+    select(where(~ is.character(.x) || is.factor(.x) || is.logical(.x))) %>%
+    select(-any_of(identifier_vars))
 )
 
 if (length(categorical_vars) == 0) {
@@ -1240,7 +1246,7 @@ levene_test_ajcc_result <- leveneTest(age_at_diagnosis ~ ajcc_pathologic_stage ,
 print(levene_test_ajcc_result)
 ```
  
-A la vista de los resultados, se pueden observar diferencias respecto a los supuestos de las pruebas paramétricas, con una desviación significativa de la normalidad en el grupo de estadio III (*p* = 0.0428) y una falta de homogeneidad de varianzas entre los grupos (p = 0.030). Por ello, las diferencias en la edad al diagnóstico según el estadio patológico AJCC se analizaron mediante la prueba no paramétrica de Kruskal–Wallis.
+A la vista de los resultados, se pueden observar diferencias respecto a los supuestos de las pruebas paramétricas, con una desviación significativa de la normalidad en el grupo de estadio III (*p* = 0.0428) y una falta de homogeneidad de varianzas entre los grupos (*p* = 0.030). Por ello, las diferencias en la edad al diagnóstico según el estadio patológico AJCC se analizaron mediante la prueba no paramétrica de Kruskal–Wallis.
 
 ```{r age-ajcc-kruskal-wallis}
 # Realizar la prueba de Kruskal-Wallis para age_at_diagnosis por ajcc_pathologic_stage
@@ -1269,7 +1275,7 @@ levene_test_grade_result <- leveneTest(age_at_diagnosis ~ tumor_grade , data
 print(levene_test_grade_result)
 ```
 
-Se observó una desviación significativa de la normalidad en el grupo G3 (p = 0.0487), mientras que se cumplió el supuesto de homogeneidad de varianzas entre los grupos (p = 0.247). Dado que no se verificó completamente el supuesto de normalidad, las diferencias en la edad al diagnóstico según el grado tumoral se analizaron mediante la prueba no paramétrica de Kruskal–Wallis.
+Se observó una desviación significativa de la normalidad en el grupo G3 (*p* = 0.0487), mientras que se cumplió el supuesto de homogeneidad de varianzas entre los grupos (*p* = 0.247). Dado que no se verificó completamente el supuesto de normalidad, las diferencias en la edad al diagnóstico según el grado tumoral se analizaron mediante la prueba no paramétrica de Kruskal–Wallis.
 
 ```{r age-tumor-grade-kruskal-wallis}
 # Realizar la prueba de Kruskal-Wallis para age_at_diagnosis por tumor_grade
@@ -1319,13 +1325,13 @@ grade_stage_data <- as.data.frame(tabla_grade_stage) %>%
   ) %>%
   ungroup()
 
-# Paleta de colores personalizada para los grados tumorales
+# Paleta de colores para los grados tumorales
 grade_colors <- c(
   "G1" = "#470E61",
   "G2" = "#404688",
   "G3" = "#0B7285",
-  "G4" = "#31B57B"
-)
+  "G4" = "#31B57B", 
+  "GX" = "grey80")
 
 # Crear el gráfico de barras apiladas
 ggplot(grade_stage_data, aes(x = ajcc_pathologic_stage, y = proportion, fill = tumor_grade)) +
@@ -1367,6 +1373,239 @@ Los resultados mostraron que el 56.84 % de los pacientes con tumores de alto gra
 
 ### Análisis de superviviencia
 
+#### Supervivencia global de la cohorte TCGA-KIRC
+
+Con el fin de explorar la supervivencia global de la cohorte, se construyó una curva de Kaplan-Meier utilizando las variables `survival_time` y `death_event`. Esta curva permite visualizar la probabilidad de supervivencia a lo largo del tiempo y proporciona una estimación de la mediana de supervivencia, así como de los intervalos de confianza asociados.
+
+```{r global-kaplan-meier-curve, fig.width=7.5, fig.height=6.2, fig.align='center', out.width='90%', fig.pos='H', fig.cap='Curva de Kaplan-Meier que muestra la supervivencia global de la cohorte TCGA-KIRC.'}
+# Cargar librerías necesarias
+library(survival)
+library(survminer)
+
+# Crear objeto de supervivencia
+surv_objetc <- Surv(time = clinical_data_final$survival_time, 
+                    event = clinical_data_final$death_event)
+
+# Ajustar modelo de Kaplan-Meier
+fit_global_km <- survfit(surv_objetc ~ 1)
+
+# Mostrar resumen del modelo
+summary(fit_global_km)
+
+# Representar la curva de Kaplan-Meier
+ggsurvplot(fit_global_km, 
+           data = clinical_data_final, 
+           conf.int = TRUE,
+           conf.int.alpha = 0.2,
+           palette = "#0B7285", 
+           ggtheme = theme_minimal(base_size = 11),
+           title = "",
+           xlab = "Tiempo (meses)", 
+           ylab = "Probabilidad de Supervivencia",
+           break.time.by = 12)
+```
+
+Tal y como se muestra en la Figura \ref{fig:global-kaplan-meier-curve}, la curva de Kaplan-Meier muestra una disminución progresiva de la supervivencia global en la cohorte TCGA-KIRC. La probabilidad de supervivencia desciende desde el 100% al inicio del seguimiento hasta aproximadamente el 50% a los 84 meses (7 años), estimándose una mediana de supervivencia cercana a este valor. Posteriormente, la curva presenta una fase de relativa estabilidad hasta alrededor de los 120 meses (10 años), momento en el que se observa un nuevo descenso hasta aproximadamente el 45%, manteniéndose estable hasta el final del periodo de seguimiento, que alcanza aproximadamente los 148 meses (12,3 años).
+
+En conjunto, la cohorte TCGA-KIRC presenta una supervivencia global relativamente prolongada, con una mediana de supervivencia de aproximadamente 84 meses (7 años). Este patrón es consistente con las características clínicas del carcinoma de células renales, que en muchos pacientes puede mostrar una evolución más prolongada en comparación con otros tipos de cáncer. No obstante, se observa una disminución progresiva de la supervivencia a lo largo del seguimiento, lo que pone de manifiesto la heterogeneidad clínica de la enfermedad y la posible existencia de subgrupos de pacientes con una evolución más desfavorable.
+
+#### Supervivencia según el estadio patológico AJCC
+
+Tras analizar la supervivencia global de la cohorte, se procedió a evaluar la supervivencia según el estadio patológico AJCC (`ajcc_pathologic_stage`),uno de los principales factores pronósticos en oncología y ampliamente utilizado para estimar la extensión de la enfermedad y el pronóstico de los pacientes. Para ello, se construyeron curvas de Kaplan-Meier estratificadas por estadio AJCC (estadios I–IV), incluyendo intervalos de confianza del 95 % y tablas de riesgo. Las diferencias en supervivencia entre los distintos estadios se evaluaron mediante la prueba de log-rank.
+
+```{r ajcc-kaplan-meier-curve, fig.width=7.5, fig.height=9.2, fig.align='center', out.width='90%', fig.pos='H', fig.cap='Curvas de Kaplan-Meier estratificadas por estadio patológico AJCC, con intervalos de confianza y tabla de riesgo.'}
+# Cargar librerías necesarias
+library(survival)
+library(viridis)
+library(survminer)
+library(dplyr)
+
+# Filtrar datos para los grupos de estadio AJCC
+clinical_data_ajcc <- clinical_data_final %>%
+  filter(ajcc_pathologic_stage %in% c("Stage I", "Stage II", "Stage III", "Stage IV"))
+
+# Crear objeto de supervivencia
+surv_object_ajcc <- Surv(time = clinical_data_ajcc$survival_time, 
+                         event = clinical_data_ajcc$death_event)
+
+# Ajustar modelo de Kaplan-Meier estratificado por estadio AJCC
+fit_ajcc_km <- survfit(surv_object_ajcc ~ ajcc_pathologic_stage, 
+                       data = clinical_data_ajcc)
+
+# Mostrar resumen del modelo sin el Call
+resumen_km <- capture.output(summary(fit_ajcc_km))
+
+# Quitar las líneas del Call
+inicio <- which(resumen_km == "")[1]
+cat(paste(resumen_km[(inicio + 1):length(resumen_km)], collapse = "\n"))
+
+# Representar la curva de Kaplan-Meier
+ggsurvplot(fit_ajcc_km, 
+           data = clinical_data_ajcc, 
+           conf.int = TRUE,
+           conf.int.alpha = 0.2,
+           palette = viridis(4),
+           ggtheme = theme_minimal(base_size = 11),
+           title = "",
+           xlab = "Tiempo (meses)", 
+           ylab = "Probabilidad de Supervivencia",
+           break.time.by = 12,
+           risk.table = TRUE,
+           pval = TRUE,
+           pval.method = TRUE,
+           pval.coord = c(100, 0.95),
+           pval.size = 4.5,
+           pval.method.coord = c(100, 0.90),
+           pval.method.size = 4.5,
+           legend.title = "Estadio AJCC",
+           legend.labs = c("Stage I", "Stage II", "Stage III", "Stage IV"))
+```
+
+La Figura \ref{fig:ajcc-kaplan-meier-curve} muestra una asociación significativa entre el estadio patológico AJCC y la supervivencia global de los pacientes (log-rank, *p* < 0,0001). La supervivencia disminuyó progresivamente conforme aumentaba el estadio tumoral, experimentando un descenso muy acusado durante los primeros 60-72 meses (5-6 años) de seguimiento, momento en el que la probabilidad de supervivencia se situaba por debajo del 25 %. Por el contrario, los pacientes en estadio I mantuvieron probabilidades de supervivencia superiores al 75 % durante aproximadamente los primeros 72 meses (6 años) y cercanas al 60 % al final del seguimiento.
+
+Los pacientes clasificados en estadio III mostraron una supervivencia intermedia, con una disminución progresiva de la probabilidad de supervivencia hasta situarse en torno al 45-50 % a partir de los 72-84 meses (6-7 años). Por su parte, los pacientes en estadio II presentaron una evolución más favorable, con una supervivencia superior al 80 % durante los primeros 60 meses (5 años) y cercana al 60 % en los últimos periodos de seguimiento disponibles. En conjunto, estos resultados evidencian que los estadios avanzados se asocian a una reducción sustancial de la supervivencia global, mientras que los estadios iniciales mantienen un pronóstico considerablemente más favorable a largo plazo.
+
+
+#### Supervivencia según el grado tumoral
+
+El grado tumoral (`tumor_grade`) es otro de los principales factores pronósticos en el carcinoma de células renales. Para evaluar su impacto en la supervivencia global, se construyeron curvas de Kaplan-Meier estratificadas por grado tumoral (G1-G4), incluyendo intervalos de confianza del 95 % y tablas de riesgo. Por otro lado, las diferencias en supervivencia entre los distintos grados tumorales se evaluaron mediante la prueba de log-rank.
+
+```{r grade-kaplan-meier-curve}
+# Cargar librerías necesarias
+library(survival)
+library(survminer)
+library(dplyr)
+
+# Filtrar datos para los grupos de grado tumoral
+clinical_data_grade <- clinical_data_final %>%
+  filter(tumor_grade %in% c("G1", "G2", "G3", "G4"))
+
+# Crear objeto de supervivencia
+surv_object_grade <- Surv(time = clinical_data_grade$survival_time,
+                         event = clinical_data_grade$death_event)
+
+# Ajustar modelo de Kaplan-Meier estratificado por grado tumoral
+fit_grade_km <- survfit(surv_object_grade ~ tumor_grade, 
+                       data = clinical_data_grade)
+
+# Mostrar resumen del modelo sin el Call
+resumen_km_grade <- capture.output(summary(fit_grade_km))
+
+# Quitar las líneas del Call
+inicio_grade <- which(resumen_km_grade == "")[1]
+cat(paste(resumen_km_grade[(inicio_grade + 1):length(resumen_km_grade)], collapse = "\n"))
+```
+
+La Figura \ref{fig:tumor-grade-kaplan-meier-curve-plot} muestra una asociación significativa entre el grado tumoral y la supervivencia global de los pacientes (log-rank, *p* < 0,0001). Se observó una disminución progresiva de la supervivencia conforme aumentaba el grado tumoral. Los pacientes con tumores G4 presentaron el peor pronóstico, con un marcado descenso de la probabilidad de supervivencia durante los primeros años de seguimiento y valores inferiores al 25 % a partir de los 60-72 meses (5-6 años). Por el contrario, los pacientes con tumores G2 mostraron las mayores probabilidades de supervivencia entre los grupos con un tamaño muestral representativo, manteniendo una supervivencia cercana al 75 % durante aproximadamente los primeros 72 meses (6 años) y superior al 50 % en los últimos periodos de seguimiento. Los tumores G3 presentaron una evolución intermedia, con una disminución progresiva de la supervivencia que los situó entre los grupos G2 y G4 a lo largo de prácticamente todo el seguimiento.
+
+Asimismo, las curvas de supervivencia mostraron una separación temprana entre los distintos grados tumorales, especialmente entre los grupos G2 y G4, lo que sugiere que el grado histológico influye de forma relevante en el pronóstico desde las primeras etapas del seguimiento. Aunque los pacientes clasificados como G1 mantuvieron una supervivencia del 100 % durante todo el estudio, este resultado debe interpretarse con cautela debido al reducido número de casos incluidos en este grupo (*n* = 14).
+
+En conjunto, estos resultados indican que un mayor grado tumoral se asocia con una menor supervivencia global y un peor pronóstico clínico, reforzando el valor del grado histológico como factor pronóstico en esta cohorte.
+
+```{r tumor-grade-kaplan-meier-curve-plot, fig.width=7.5, fig.height=9.2, fig.align='center', out.width='90%', fig.pos='H', fig.cap='Curvas de Kaplan-Meier estratificadas por grado tumoral, con intervalos de confianza y tabla de riesgo.'}
+
+# Paleta de colores personalizada para los grados tumorales
+grade_colors <- c(
+  "G1" = "#470E61",
+  "G2" = "#404688",
+  "G3" = "#0B7285",
+  "G4" = "#31B57B")
+
+# Representar la curva de Kaplan-Meier
+ggsurvplot(fit_grade_km,
+           data = clinical_data_grade, 
+           conf.int = TRUE,
+           conf.int.alpha = 0.2,
+           palette = grade_colors,
+           ggtheme = theme_minimal(base_size = 11),
+           title = "",
+           xlab = "Tiempo (meses)", 
+           ylab = "Probabilidad de Supervivencia",
+           break.time.by = 12,
+           risk.table = TRUE,
+           pval = TRUE,
+           pval.method = TRUE,
+           pval.coord = c(100, 0.95),
+           pval.size = 4.5,
+           pval.method.coord = c(100, 0.90),
+           pval.method.size = 4.5,
+           legend.title = "Grado tumoral",
+           legend.labs = c("G1", "G2", "G3", "G4"))
+
+```
+
+#### Supervivencia según la edad al diagnóstico 
+
+La edad al diagnóstico (`age_at_diagnosis`) constituye uno de los factores pronósticos más relevantes en numerosos tipos de cáncer, ya que puede influir tanto en la evolución de la enfermedad como en la respuesta al tratamiento. Por ello, se evaluó su impacto sobre la supervivencia global mediante curvas de Kaplan-Meier estratificadas por grupos de edad. Los pacientes se clasificaron en tres categorías: menores de 50 años, entre 50 y 70 años y mayores de 70 años. Las curvas se representaron junto con sus intervalos de confianza del 95 % y las correspondientes tablas de riesgo. Las diferencias en supervivencia entre los distintos grupos de edad se evaluaron mediante la prueba de log-rank.
+
+```{r age-kaplan-meier-curve, fig.width=7.5, fig.height=9.2, fig.align='center', out.width='90%', fig.pos='H', fig.cap='Curvas de Kaplan-Meier estratificadas por grupos de edad al diagnóstico, con intervalos de confianza y tabla de riesgo.'}
+# Cargar librerías necesarias
+library(survival)
+library(survminer)
+library(dplyr)
+
+# Crear variable de grupos de edad
+clinical_data_final <- clinical_data_final %>%
+  mutate(age_group = case_when(
+    age_at_diagnosis < 50 ~ "<50 años",
+    age_at_diagnosis >= 50 & age_at_diagnosis <= 70 ~
+      "50-70 años",
+    age_at_diagnosis > 70 ~ ">70 años",
+    TRUE ~ NA_character_
+  ))
+
+# Filtrar datos para los grupos de edad
+clinical_data_age <- clinical_data_final %>%
+  filter(!is.na(age_group))
+
+# Crear objeto de supervivencia
+surv_object_age <- Surv(time = clinical_data_age$survival_time,
+                         event = clinical_data_age$death_event)
+
+# Ajustar modelo de Kaplan-Meier estratificado por grupos de edad
+fit_age_km <- survfit(surv_object_age ~ age_group,
+                       data = clinical_data_age)
+
+# Mostrar resumen del modelo sin el Call
+resumen_km_age <- capture.output(summary(fit_age_km))
+
+# Quitar las líneas del Call
+inicio_age <- which(resumen_km_age == "")[1]
+cat(paste(resumen_km_age[(inicio_age + 1):length(resumen_km_age)], collapse = "\n"))
+
+# Paleta de colores personalizada para los grupos de edad
+age_colors <- c(
+  "<50 años" = "#75D054",
+  "50-70 años" = "#0B7285",
+  ">70 años" = "#470E61")
+
+# Representar la curva de Kaplan-Meier
+ggsurvplot(fit_age_km,
+           data = clinical_data_age, 
+           conf.int = TRUE,
+           conf.int.alpha = 0.2,
+           palette = age_colors,
+           ggtheme = theme_minimal(base_size = 11),
+           title = "",
+           xlab = "Tiempo (meses)", 
+           ylab = "Probabilidad de Supervivencia",
+           break.time.by = 12,
+           risk.table = TRUE,
+           pval = TRUE,
+           pval.method = TRUE,
+           pval.coord = c(100, 0.95),
+           pval.size = 4.5,
+           pval.method.coord = c(100, 0.90),
+           pval.method.size = 4.5,
+           legend.title = "Grupo de edad",
+           legend.labs = c("<50 años", "50-70 años", ">70 años"))
+```
+
+La Figura \ref{fig:age-kaplan-meier-curve} muestra diferencias significativas en la supervivencia global entre los distintos grupos de edad al diagnóstico (log-rank, *p* < 0,0001). Los pacientes menores de 50 años presentaron las mayores probabilidades de supervivencia durante todo el periodo de seguimiento, manteniendo valores superiores al 75 % durante aproximadamente los primeros 60-72 meses (5-6 años) y cercanos al 70 % en los últimos periodos evaluables.
+
+Por su parte, los pacientes con edades comprendidas entre 50 y 70 años mostraron la supervivencia más desfavorable, con un descenso progresivo de la probabilidad de supervivencia hasta situarse por debajo del 50 % alrededor de los 72 meses (6 años) y en torno al 25 % a partir de los 96-108 meses (8-9 años). Los pacientes mayores de 70 años presentaron una supervivencia intermedia, superior a la observada en el grupo de 50-70 años durante gran parte del seguimiento y cercana al 50 % en los periodos finales.
+
+En conjunto, estos resultados indican que la edad al diagnóstico se asocia significativamente con la supervivencia global de la cohorte. No obstante, el patrón observado no muestra una disminución lineal de la supervivencia con la edad, ya que el grupo de 50-70 años presentó una supervivencia inferior a la observada en los pacientes mayores de 70 años.
 
 \newpage
 
