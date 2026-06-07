@@ -11,6 +11,15 @@ output:
     latex_engine: xelatex
     citation_package: biblatex
     keep_tex: false
+    pandoc_args:
+      - -V
+      - colorlinks=true
+      - -V
+      - linkcolor=uocblue
+      - -V
+      - urlcolor=uocblue
+      - -V
+      - citecolor=uocblue
     includes:
       in_header: preamble.tex
   word_document:
@@ -1710,13 +1719,6 @@ cox_data <- clinical_data_final %>%
       levels = c("Low grade", "High grade")
     )
   )
-
-# Comprobar distribución de pacientes y eventos por grupo de grado tumoral
-table(cox_data$tumor_grade)
-table(cox_data$tumor_grade, cox_data$death_event)
-
-table(cox_data$tumor_grade_group)
-table(cox_data$tumor_grade_group, cox_data$death_event)
 
 # Crear objeto de supervivencia
 surv_object_cox <- Surv(
