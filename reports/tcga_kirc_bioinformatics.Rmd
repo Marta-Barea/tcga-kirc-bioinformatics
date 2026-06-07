@@ -1672,7 +1672,7 @@ ggsurvplot(fit_sex_km,
            legend.title = "Grupo de sexo")
 ```
 
-#### Cox proporcional de riesgos multivariante
+#### Modelo de riesgos proporcionales de Cox
 
 Atendiendo a los resultados obtenidos y discutidos en los apartados anteriores, se procedió a realizar un análisis de supervivencia multivariante mediante un modelo de Cox proporcional de riesgos. Este modelo permite evaluar el impacto simultáneo de múltiples variables clínicas sobre la supervivencia global, ajustando por posibles factores de confusión y proporcionando estimaciones del riesgo relativo asociado a cada variable.
 
