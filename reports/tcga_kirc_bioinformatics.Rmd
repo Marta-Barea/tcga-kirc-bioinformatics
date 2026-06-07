@@ -55,7 +55,7 @@ En este contexto, el presente trabajo aborda el estudio del **carcinoma renal de
 
 El carcinoma renal de células claras constituye el subtipo histológico más frecuente del cáncer renal y representa un importante desafío clínico debido a su elevada heterogeneidad molecular y a la variabilidad observada en la evolución de los pacientes. A pesar de los avances producidos durante las últimas décadas en el conocimiento de esta enfermedad, continúan existiendo interrogantes relacionados con los factores biológicos que condicionan su progresión, pronóstico y respuesta a los tratamientos. Por este motivo, la identificación de biomarcadores moleculares y la caracterización de los procesos biológicos subyacentes siguen siendo líneas prioritarias de investigación en oncología traslacional.
 
-Partiendo de esta motivación, se plantea la implementación de una estrategia bioinformática orientada al análisis exploratorio e integrativo de datos clínicos y transcriptómicos de pacientes diagnosticados de KIRC. Este enfoque permite aplicar de manera práctica conceptos fundamentales abordados durante la asignatura, incluyendo la adquisición y gestión de datos biomédicos, el preprocesamiento de información de alta dimensionalidad, el análisis estadístico de datos complejos, la visualización de resultados y la interpretación biológica de los hallazgos obtenidos.
+Partiendo de esta motivación, se plantea la implementación de una estrategia bioinformática orientada al análisis de datos clínicos y transcriptómicos de pacientes diagnosticados de KIRC. Este enfoque permite aplicar de manera práctica conceptos fundamentales abordados durante la asignatura, incluyendo la adquisición y gestión de datos biomédicos, el preprocesamiento de información de alta dimensionalidad, el análisis estadístico de datos complejos, la visualización de resultados y la interpretación biológica de los hallazgos obtenidos.
 
 Asimismo, el desarrollo de este trabajo constituye una oportunidad para poner en práctica metodologías reproducibles de análisis de datos, un aspecto esencial en la investigación bioinformática. La capacidad para combinar herramientas computacionales, técnicas estadísticas y conocimientos biológicos resulta indispensable para transformar grandes volúmenes de datos ómicos en conocimiento útil y científicamente relevante.
 
@@ -1433,11 +1433,11 @@ fit_ajcc_km <- survfit(surv_object_ajcc ~ ajcc_pathologic_stage,
                        data = clinical_data_ajcc)
 
 # Mostrar resumen del modelo sin el Call
-resumen_km <- capture.output(summary(fit_ajcc_km))
+summary_km_ajcc <- capture.output(summary(fit_ajcc_km))
 
 # Quitar las líneas del Call
-inicio <- which(resumen_km == "")[1]
-cat(paste(resumen_km[(inicio + 1):length(resumen_km)], collapse = "\n"))
+start_ajcc <- which(summary_km_ajcc == "")[1]
+cat(paste(summary_km_ajcc[(start_ajcc + 1):length(summary_km_ajcc)], collapse = "\n"))
 
 # Representar la curva de Kaplan-Meier
 ggsurvplot(fit_ajcc_km, 
@@ -1489,18 +1489,22 @@ fit_grade_km <- survfit(surv_object_grade ~ tumor_grade,
                        data = clinical_data_grade)
 
 # Mostrar resumen del modelo sin el Call
-resumen_km_grade <- capture.output(summary(fit_grade_km))
+summary_km_grade <- capture.output(summary(fit_grade_km))
 
 # Quitar las líneas del Call
-inicio_grade <- which(resumen_km_grade == "")[1]
-cat(paste(resumen_km_grade[(inicio_grade + 1):length(resumen_km_grade)], collapse = "\n"))
+start_grade <- which(summary_km_grade == "")[1]
+cat(paste(summary_km_grade[(start_grade + 1):length(summary_km_grade)], collapse = "\n"))
 ```
 
-La Figura \ref{fig:tumor-grade-kaplan-meier-curve-plot} muestra una asociación significativa entre el grado tumoral y la supervivencia global de los pacientes (log-rank, *p* < 0,0001). Se observó una disminución progresiva de la supervivencia conforme aumentaba el grado tumoral. Los pacientes con tumores G4 presentaron el peor pronóstico, con un marcado descenso de la probabilidad de supervivencia durante los primeros años de seguimiento y valores inferiores al 25 % a partir de los 60-72 meses (5-6 años). Por el contrario, los pacientes con tumores G2 mostraron las mayores probabilidades de supervivencia entre los grupos con un tamaño muestral representativo, manteniendo una supervivencia cercana al 75 % durante aproximadamente los primeros 72 meses (6 años) y superior al 50 % en los últimos periodos de seguimiento. Los tumores G3 presentaron una evolución intermedia, con una disminución progresiva de la supervivencia que los situó entre los grupos G2 y G4 a lo largo de prácticamente todo el seguimiento.
+La Figura \ref{fig:tumor-grade-kaplan-meier-curve-plot} muestra una asociación significativa entre el grado tumoral y la supervivencia global de los pacientes (log-rank, *p* < 0,0001). Se observó una disminución progresiva de la supervivencia conforme aumentaba el grado tumoral, evidenciando una clara estratificación pronóstica entre los distintos grupos. Los pacientes con tumores G4 presentaron el peor pronóstico, con un marcado descenso de la probabilidad de supervivencia durante los primeros años de seguimiento y valores inferiores al 25 % a partir de los 60-72 meses (5-6 años). Además, la curva correspondiente a este grupo mostró una caída más pronunciada desde las fases iniciales del seguimiento, reflejando una mayor tasa de eventos en comparación con el resto de los grados tumorales.
 
-Asimismo, las curvas de supervivencia mostraron una separación temprana entre los distintos grados tumorales, especialmente entre los grupos G2 y G4, lo que sugiere que el grado histológico influye de forma relevante en el pronóstico desde las primeras etapas del seguimiento. Aunque los pacientes clasificados como G1 mantuvieron una supervivencia del 100 % durante todo el estudio, este resultado debe interpretarse con cautela debido al reducido número de casos incluidos en este grupo (*n* = 14).
+Por el contrario, los pacientes con tumores G2 mostraron las mayores probabilidades de supervivencia entre los grupos con un tamaño muestral representativo, manteniendo una supervivencia cercana al 75 % durante aproximadamente los primeros 72 meses (6 años) y superior al 50 % en los últimos periodos de seguimiento. Los tumores G3 presentaron una evolución intermedia, con una disminución progresiva de la supervivencia que los situó entre los grupos G2 y G4 a lo largo de prácticamente todo el seguimiento. La separación mantenida entre las curvas de G2, G3 y G4 sugiere que el grado tumoral influye de forma consistente en la evolución clínica de los pacientes.
 
-En conjunto, estos resultados indican que un mayor grado tumoral se asocia con una menor supervivencia global y un peor pronóstico clínico, reforzando el valor del grado histológico como factor pronóstico en esta cohorte.
+Asimismo, las curvas de supervivencia mostraron una separación temprana entre los distintos grados tumorales, especialmente entre los grupos G2 y G4, diferencia que se mantuvo durante gran parte del periodo de observación. Este comportamiento pone de manifiesto la capacidad del grado histológico para discriminar pacientes con diferente pronóstico desde las primeras etapas del seguimiento.
+
+Aunque los pacientes clasificados como G1 mantuvieron una supervivencia del 100 % durante todo el estudio, este resultado debe interpretarse con cautela debido al reducido número de casos incluidos en este grupo (*n* = 14), lo que limita la robustez de las estimaciones y dificulta la comparación con el resto de categorías.
+
+En conjunto, estos resultados indican que un mayor grado tumoral se asocia con una menor supervivencia global y un peor pronóstico clínico, reforzando el valor del grado histológico como uno de los principales factores pronósticos en esta cohorte.
 
 ```{r tumor-grade-kaplan-meier-curve-plot, fig.width=7.5, fig.height=9.2, fig.align='center', out.width='90%', fig.pos='H', fig.cap='Curvas de Kaplan-Meier estratificadas por grado tumoral, con intervalos de confianza y tabla de riesgo.'}
 
@@ -1547,10 +1551,10 @@ library(dplyr)
 # Crear variable de grupos de edad
 clinical_data_final <- clinical_data_final %>%
   mutate(age_group = case_when(
-    age_at_diagnosis < 50 ~ "<50 años",
+    age_at_diagnosis < 50 ~ "<50 years",
     age_at_diagnosis >= 50 & age_at_diagnosis <= 70 ~
-      "50-70 años",
-    age_at_diagnosis > 70 ~ ">70 años",
+      "50-70 years",
+    age_at_diagnosis > 70 ~ ">70 years",
     TRUE ~ NA_character_
   ))
 
@@ -1567,17 +1571,17 @@ fit_age_km <- survfit(surv_object_age ~ age_group,
                        data = clinical_data_age)
 
 # Mostrar resumen del modelo sin el Call
-resumen_km_age <- capture.output(summary(fit_age_km))
+summary_km_age <- capture.output(summary(fit_age_km))
 
 # Quitar las líneas del Call
-inicio_age <- which(resumen_km_age == "")[1]
-cat(paste(resumen_km_age[(inicio_age + 1):length(resumen_km_age)], collapse = "\n"))
+start_age <- which(summary_km_age == "")[1]
+cat(paste(summary_km_age[(start_age + 1):length(summary_km_age)], collapse = "\n"))
 
 # Paleta de colores personalizada para los grupos de edad
 age_colors <- c(
-  "<50 años" = "#75D054",
-  "50-70 años" = "#0B7285",
-  ">70 años" = "#470E61")
+  "<50 years" = "#75D054",
+  "50-70 years" = "#0B7285",
+  ">70 years" = "#470E61")
 
 # Representar la curva de Kaplan-Meier
 ggsurvplot(fit_age_km,
@@ -1598,14 +1602,149 @@ ggsurvplot(fit_age_km,
            pval.method.coord = c(100, 0.90),
            pval.method.size = 4.5,
            legend.title = "Grupo de edad",
-           legend.labs = c("<50 años", "50-70 años", ">70 años"))
+           legend.labs = c("<50 years", "50-70 years", ">70 years"))
 ```
 
-La Figura \ref{fig:age-kaplan-meier-curve} muestra diferencias significativas en la supervivencia global entre los distintos grupos de edad al diagnóstico (log-rank, *p* < 0,0001). Los pacientes menores de 50 años presentaron las mayores probabilidades de supervivencia durante todo el periodo de seguimiento, manteniendo valores superiores al 75 % durante aproximadamente los primeros 60-72 meses (5-6 años) y cercanos al 70 % en los últimos periodos evaluables.
+La Figura \ref{fig:age-kaplan-meier-curve} muestra diferencias significativas en la supervivencia global entre los distintos grupos de edad al diagnóstico (log-rank, *p* < 0,0001). Los pacientes menores de 50 años presentaron las mayores probabilidades de supervivencia durante todo el periodo de seguimiento, manteniendo valores elevados y una evolución más favorable en comparación con el resto de grupos. Por el contrario, los pacientes con edades comprendidas entre 50 y 70 años mostraron la supervivencia más desfavorable, con un descenso progresivo y sostenido de la probabilidad de supervivencia a lo largo del tiempo.
 
-Por su parte, los pacientes con edades comprendidas entre 50 y 70 años mostraron la supervivencia más desfavorable, con un descenso progresivo de la probabilidad de supervivencia hasta situarse por debajo del 50 % alrededor de los 72 meses (6 años) y en torno al 25 % a partir de los 96-108 meses (8-9 años). Los pacientes mayores de 70 años presentaron una supervivencia intermedia, superior a la observada en el grupo de 50-70 años durante gran parte del seguimiento y cercana al 50 % en los periodos finales.
+Los pacientes mayores de 70 años presentaron una supervivencia intermedia, situándose entre los grupos de mejor y peor pronóstico. De forma consistente a lo largo de gran parte del seguimiento, este grupo mantuvo probabilidades de supervivencia superiores a las observadas en los pacientes de 50 a 70 años. Asimismo, las curvas correspondientes a los tres grupos de edad mostraron una separación relativamente temprana, que tendió a mantenerse durante el periodo de observación, lo que sugiere una asociación entre la edad al diagnóstico y la evolución clínica de los pacientes.
 
-En conjunto, estos resultados indican que la edad al diagnóstico se asocia significativamente con la supervivencia global de la cohorte. No obstante, el patrón observado no muestra una disminución lineal de la supervivencia con la edad, ya que el grupo de 50-70 años presentó una supervivencia inferior a la observada en los pacientes mayores de 70 años.
+En conjunto, estos resultados indican que la edad al diagnóstico se asocia significativamente con la supervivencia global de la cohorte. No obstante, el patrón observado no evidenció una disminución progresiva de la supervivencia con el aumento de la edad, ya que el grupo de 50 a 70 años presentó una supervivencia inferior a la observada en los pacientes mayores de 70 años durante gran parte del seguimiento.
+
+#### Supervivencia según el sexo biológico
+
+El sexo biológico (`sex_at_birth`) es una de las variables clínicas que potencialmente puede influir en la evolución de la enfermedad y en la supervivencia de los pacientes. Con el objetivo de evaluar su posible asociación con la supervivencia global, se construyeron curvas de Kaplan-Meier estratificadas por sexo (masculino y femenino), incluyendo intervalos de confianza del 95 % y tablas de riesgo. Las diferencias entre ambos grupos se analizaron, nuevamente, mediante la prueba de log-rank.
+
+```{r sex-kaplan-meier-curve}
+# Cargar librerías necesarias
+library(survival)
+library(viridis)
+library(survminer)
+library(dplyr)
+
+# Filtrar datos para los grupos de sexo
+clinical_data_sex <- clinical_data_final %>%
+  filter(!is.na(sex_at_birth))
+
+# Crear objeto de supervivencia
+surv_object_sex <- Surv(time = clinical_data_sex$survival_time,
+                         event = clinical_data_sex$death_event)
+
+# Ajustar modelo de Kaplan-Meier estratificado por grupos sexo
+fit_sex_km <- survfit(surv_object_sex ~ sex_at_birth,
+                       data = clinical_data_sex)
+
+# Mostrar resumen del modelo sin el Call
+summary_km_sex <- capture.output(summary(fit_sex_km))
+
+# Quitar las líneas del Call
+start_sex <- which(summary_km_sex == "")[1]
+cat(paste(summary_km_sex[(start_sex + 1):length(summary_km_sex)], collapse = "\n"))
+```
+
+La Figura \ref{fig:sex-kaplan-meier-curve-plot} muestra las curvas de Kaplan-Meier estratificadas por sexo. No se observaron diferencias relevantes en la supervivencia global entre hombres y mujeres, ya que ambas curvas presentaron trayectorias muy similares a lo largo de todo el periodo de seguimiento. Además, los intervalos de confianza mostraron un amplio solapamiento entre ambos grupos, lo que respalda la ausencia de diferencias evidentes en la probabilidad de supervivencia.
+
+Las curvas permanecieron próximas durante prácticamente todo el seguimiento, sin apreciarse una separación sostenida entre ambos grupos. Del mismo modo, la evolución temporal de la supervivencia fue comparable en hombres y mujeres, observándose descensos de magnitud similar y manteniéndose probabilidades de supervivencia cercanas durante la mayor parte del periodo de observación. Aunque pueden apreciarse pequeñas variaciones puntuales entre las curvas en determinados momentos del seguimiento, estas no siguieron un patrón consistente ni sugieren diferencias clínicamente relevantes entre ambos grupos.
+
+Asimismo, la tabla de riesgo mostró una disminución gradual del número de pacientes en seguimiento en ambos sexos a medida que avanzaba el tiempo de observación, manteniéndose una distribución relativamente equilibrada entre grupos durante gran parte del estudio. Esta circunstancia contribuye a reforzar la robustez de la comparación realizada y reduce la probabilidad de que las pequeñas diferencias observadas se deban a desequilibrios importantes en el tamaño de los grupos.
+
+Este resultado fue confirmado mediante la prueba de log-rank, que no detectó diferencias estadísticamente significativas entre hombres y mujeres (*p* = 0,75). En conjunto, estos hallazgos indican que, en esta cohorte, el sexo no se asoció de forma significativa con la supervivencia global cuando se analizó de manera individual. Por tanto, su influencia sobre el pronóstico parece limitada en comparación con otras variables clínicas y patológicas evaluadas en el estudio, las cuales mostraron una mayor capacidad para discriminar entre grupos con diferente evolución clínica.
+
+```{r sex-kaplan-meier-curve-plot, fig.width=7.5, fig.height=9.2, fig.align='center', out.width='90%', fig.pos='H', fig.cap='Curvas de Kaplan-Meier estratificadas por sexo, con intervalos de confianza y tabla de riesgo.'}
+# Representar la curva de Kaplan-Meier
+ggsurvplot(fit_sex_km,
+           data = clinical_data_sex, 
+           conf.int = TRUE,
+           conf.int.alpha = 0.2,
+           palette = viridis(2),
+           ggtheme = theme_minimal(base_size = 11),
+           title = "",
+           xlab = "Tiempo (meses)", 
+           ylab = "Probabilidad de Supervivencia",
+           break.time.by = 12,
+           risk.table = TRUE,
+           pval = TRUE,
+           pval.method = TRUE,
+           pval.coord = c(100, 0.95),
+           pval.size = 4.5,
+           pval.method.coord = c(100, 0.90),
+           pval.method.size = 4.5,
+           legend.title = "Grupo de sexo")
+```
+
+#### Cox proporcional de riesgos multivariante
+
+Atendiendo a los resultados obtenidos y discutidos en los apartados anteriores, se procedió a realizar un análisis de supervivencia multivariante mediante un modelo de Cox proporcional de riesgos. Este modelo permite evaluar el impacto simultáneo de múltiples variables clínicas sobre la supervivencia global, ajustando por posibles factores de confusión y proporcionando estimaciones del riesgo relativo asociado a cada variable.
+
+Concretamente, se incluyeron en el modelo las variables que mostraron una asociación significativa con la supervivencia global en los análisis univariantes previos, como el estadio patológico AJCC, el grado tumoral y la edad al diagnóstico. Dado el reducido número de pacientes clasificados como G1 y la ausencia o escasez de eventos observados en este grupo, los grados tumorales se agruparon en dos categorías: tumores de bajo grado (G1-G2) y tumores de alto grado (G3-G4). Esta estrategia permitió obtener estimaciones más estables y robustas del efecto del grado tumoral sobre la supervivencia, evitando problemas derivados del escaso tamaño muestral de algunas categorías. La edad se incorporó al modelo como una variable continua, mientras que el estadio patológico AJCC se consideró como una variable categórica ordinal con cuatro niveles (estadios I-IV).
+
+```{r cox-multivariate-analysis}
+# Cargar librerías necesarias
+library(survival)
+library(dplyr)
+
+# Preparar los datos para el modelo de Cox
+cox_data <- clinical_data_final %>%
+  filter(
+    ajcc_pathologic_stage %in% c("Stage I", "Stage II", "Stage III", "Stage IV"),
+    tumor_grade %in% c("G1", "G2", "G3", "G4"),
+    !is.na(survival_time),
+    !is.na(death_event),
+    !is.na(age_at_diagnosis)
+  ) %>%
+  mutate(
+    ajcc_pathologic_stage = factor(
+      ajcc_pathologic_stage,
+      levels = c("Stage I", "Stage II", "Stage III", "Stage IV")
+    ),
+    tumor_grade = factor(
+      tumor_grade,
+      levels = c("G1", "G2", "G3", "G4")
+    ),
+    tumor_grade_group = case_when(
+      tumor_grade %in% c("G1", "G2") ~ "Low grade",
+      tumor_grade %in% c("G3", "G4") ~ "High grade"
+    ),
+    tumor_grade_group = factor(
+      tumor_grade_group,
+      levels = c("Low grade", "High grade")
+    )
+  )
+
+# Comprobar distribución de pacientes y eventos por grupo de grado tumoral
+table(cox_data$tumor_grade)
+table(cox_data$tumor_grade, cox_data$death_event)
+
+table(cox_data$tumor_grade_group)
+table(cox_data$tumor_grade_group, cox_data$death_event)
+
+# Crear objeto de supervivencia
+surv_object_cox <- Surv(
+  time = cox_data$survival_time,
+  event = cox_data$death_event
+)
+
+# Ajustar modelo de Cox multivariante
+cox_model <- coxph(
+  surv_object_cox ~ ajcc_pathologic_stage +
+    tumor_grade_group +
+    age_at_diagnosis,
+  data = cox_data
+)
+
+# Mostrar resumen del modelo de Cox
+summary(cox_model)
+
+# Verificar el supuesto de riesgos proporcionales
+cox_zph <- cox.zph(cox_model)
+print(cox_zph)
+```
+
+Los resultados del modelo de Cox mostraron que el estadio patológico, el grado tumoral y la edad al diagnóstico influyen significativamente en la supervivencia de los pacientes. En comparación con los pacientes en estadio I, aquellos diagnosticados en estadio III presentaron un riesgo aproximadamente dos veces mayor de presentar el evento (HR = 2,12; IC95%: 1,40–3,23; *p* < 0,001), mientras que los pacientes en estadio IV mostraron un riesgo más de cinco veces superior (HR = 5,42; IC95%: 3,61–8,12; *p* < 0,001). Por el contrario, no se observaron diferencias significativas entre los estadios I y II. Asimismo, los tumores de alto grado se asociaron con un peor pronóstico, aumentando el riesgo de presentar el evento en un 64% respecto a los tumores de bajo grado (HR = 1,64; IC95%: 1,14–2,36; *p* = 0,007). 
+
+De igual forma, la edad al diagnóstico mostró una asociación significativa con la supervivencia, observándose un incremento del riesgo del 3,3% por cada año adicional de edad (HR = 1,03; IC95%: 1,02–1,05; *p* < 0,001). Aunque las curvas de Kaplan-Meier estratificadas por grupos de edad no mostraron una disminución progresiva de la supervivencia en los pacientes de mayor edad, esta aparente discrepancia puede explicarse porque dichas curvas representan análisis no ajustados, mientras que el modelo de Cox estima el efecto independiente de la edad tras ajustar por otras variables pronósticas relevantes, como el estadio tumoral y el grado histológico.
+
+El modelo presentó una buena capacidad discriminativa (índice de concordancia = 0,762), lo que indica una adecuada capacidad para diferenciar entre pacientes con distinto riesgo. Además, la evaluación del supuesto de riesgos proporcionales mediante la prueba de residuos de Schoenfeld sugirió una posible variación temporal del efecto del estadio tumoral (*p* = 0,0029), así como del modelo global (*p* = 0,0131). A pesar de esta limitación, los resultados ponen de manifiesto que el estadio avanzado, el alto grado histológico y la mayor edad al diagnóstico se asocian con una peor supervivencia en esta cohorte de pacientes.
 
 \newpage
 
