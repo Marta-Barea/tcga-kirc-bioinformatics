@@ -58,21 +58,59 @@ options(width = 72)
 
 # Introducción
 
-La presente memoria se desarrolla en el marco de la **Prueba de Evaluación Continua 4 (PEC 4)** de la asignatura **Software para el Análisis de Datos**, perteneciente al **Máster Universitario en Bioinformática y Bioestadística**, impartido conjuntamente por la **Universitat Oberta de Catalunya (UOC)** y la **Universitat de Barcelona (UB)**. Esta actividad tiene como finalidad integrar y aplicar los conocimientos teóricos y prácticos adquiridos a lo largo de la asignatura mediante el diseño y ejecución de un proyecto de análisis de datos sobre una temática de libre elección, utilizando para ello un conjunto de datos seleccionado por el estudiante.
+La presente memoria se desarrolla en el marco de la Prueba de Evaluación Continua 4 (PEC 4) de la asignatura *Software para el Análisis de Datos*, perteneciente al Máster Universitario en Bioinformática y Bioestadística de la Universitat Oberta de Catalunya (UOC) y la Universitat de Barcelona (UB). El objetivo de esta actividad es integrar los conocimientos adquiridos a lo largo de la asignatura mediante el diseño y desarrollo de un proyecto de análisis de datos aplicado a una problemática biomédica de interés.
 
-En este contexto, el presente trabajo aborda el estudio del **carcinoma renal de células claras** (*Kidney Renal Clear Cell Carcinoma*, KIRC) a partir de datos procedentes de **The Cancer Genome Atlas (TCGA)**, uno de los consorcios internacionales más relevantes en el ámbito de la genómica del cáncer. La disponibilidad de datos moleculares y clínicos de alta calidad convierte a TCGA en una fuente de información de gran valor para la investigación biomédica, permitiendo la exploración de los mecanismos biológicos implicados en el desarrollo y progresión de numerosas neoplasias humanas.
+Para ello, se ha seleccionado como caso de estudio el carcinoma renal de células claras (*Kidney Renal Clear Cell Carcinoma*, KIRC), utilizando datos clínicos y transcriptómicos procedentes de The Cancer Genome Atlas (TCGA), uno de los repositorios de referencia en investigación oncológica. La disponibilidad de información molecular y clínica de alta calidad convierte a este recurso en una herramienta fundamental para el estudio de los mecanismos biológicos asociados al desarrollo y progresión tumoral.
 
-El carcinoma renal de células claras constituye el subtipo histológico más frecuente del cáncer renal y representa un importante desafío clínico debido a su elevada heterogeneidad molecular y a la variabilidad observada en la evolución de los pacientes. A pesar de los avances producidos durante las últimas décadas en el conocimiento de esta enfermedad, continúan existiendo interrogantes relacionados con los factores biológicos que condicionan su progresión, pronóstico y respuesta a los tratamientos. Por este motivo, la identificación de biomarcadores moleculares y la caracterización de los procesos biológicos subyacentes siguen siendo líneas prioritarias de investigación en oncología traslacional.
+Este trabajo aborda la aplicación de metodologías bioinformáticas para la adquisición, procesamiento, exploración y análisis de datos de alta dimensionalidad. Mediante la integración de información clínica y transcriptómica, se busca caracterizar el conjunto de datos estudiado, identificar patrones biológicos relevantes y evaluar posibles asociaciones entre perfiles moleculares y variables clínicas de interés.
 
-Partiendo de esta motivación, se plantea la implementación de una estrategia bioinformática orientada al análisis de datos clínicos y transcriptómicos de pacientes diagnosticados de KIRC. Este enfoque permite aplicar de manera práctica conceptos fundamentales abordados durante la asignatura, incluyendo la adquisición y gestión de datos biomédicos, el preprocesamiento de información de alta dimensionalidad, el análisis estadístico de datos complejos, la visualización de resultados y la interpretación biológica de los hallazgos obtenidos.
-
-Asimismo, el desarrollo de este trabajo constituye una oportunidad para poner en práctica metodologías reproducibles de análisis de datos, un aspecto esencial en la investigación bioinformática. La capacidad para combinar herramientas computacionales, técnicas estadísticas y conocimientos biológicos resulta indispensable para transformar grandes volúmenes de datos ómicos en conocimiento útil y científicamente relevante.
-
-En consecuencia, el objetivo de esta memoria no se limita únicamente a la obtención de resultados sobre un caso de estudio concreto, sino que persigue demostrar la adquisición de las competencias desarrolladas a lo largo de la asignatura, mediante la construcción de un flujo de trabajo reproducible y fundamentado metodológicamente. De este modo, se pretende evidenciar el potencial de las herramientas de análisis de datos para generar conocimiento sobre los mecanismos moleculares asociados al carcinoma renal de células claras y contribuir a una mejor comprensión de esta patología desde una perspectiva bioinformática.
+Asimismo, esta memoria pone especial énfasis en el desarrollo de un flujo de trabajo reproducible, basado en herramientas computacionales y métodos estadísticos para el tratamiento de datos biomédicos. Además de contribuir al estudio de una problemática relevante en oncología, el proyecto evidencia la capacidad para gestionar, procesar e interpretar información biológica compleja, una habilidad esencial en el ámbito de la bioinformática.
 
 \newpage
 
 # Estado del Arte
+
+## Bases biológicas y relevancia cínica del cáncer
+
+El cáncer engloba un amplio conjunto de enfermedades caracterizadas por el crecimiento descontrolado de células que han acumulado alteraciones genéticas y moleculares a lo largo del tiempo. Estas alteraciones permiten que las células escapen a los mecanismos que regulan normalmente su proliferación, supervivencia y diferenciación, favoreciendo la formación de tumores capaces de invadir tejidos próximos y, en fases avanzadas, diseminarse a otros órganos mediante procesos de metástasis. Lejos de tratarse de una única enfermedad, el cáncer comprende múltiples patologías con comportamientos biológicos muy diversos, lo que explica la dificultad de su diagnóstico, tratamiento y seguimiento clínico.
+
+Durante las últimas décadas, el estudio de la biología tumoral ha permitido identificar una serie de características comunes compartidas por la mayoría de los cánceres, conocidas como los *hallmarks of cancer*. Entre ellas destacan la capacidad de proliferar de forma sostenida, evitar la muerte celular programada, inducir la formación de nuevos vasos sanguíneos, evadir la respuesta inmunitaria o reprogramar el metabolismo celular para satisfacer las elevadas demandas energéticas del tumor. La adquisición progresiva de estas capacidades es consecuencia de complejas alteraciones genéticas, epigenéticas y moleculares que impulsan el desarrollo y progresión de la enfermedad. A pesar de los importantes avances logrados en investigación, prevención, diagnóstico y tratamiento, el cáncer continúa representando uno de los principales desafíos para la salud pública mundial debido a su elevada incidencia y mortalidad.
+
+## Carcinoma renal de células claras
+
+Dentro de este grupo de enfermedades, el cáncer renal constituye una de las neoplasias urológicas más relevantes tanto por su impacto clínico como por la complejidad biológica que presenta. La mayoría de los tumores renales se originan en el epitelio tubular del riñón y se clasifican dentro del grupo de los carcinomas de células renales (*renal cell carcinoma*, RCC), responsables de aproximadamente el 90 % de las neoplasias malignas de este órgano. El RCC engloba distintos subtipos histológicos con características clínicas, moleculares y pronósticas diferenciadas, reflejando la gran heterogeneidad que caracteriza a esta enfermedad.
+
+Entre estos subtipos, el carcinoma renal de células claras (*clear cell renal cell carcinoma*, ccRCC) es el más frecuente, representando alrededor del 70–80 % de todos los casos de RCC. Su denominación proviene del aspecto característico de las células tumorales, cuyo citoplasma presenta una apariencia clara debido a la acumulación intracelular de lípidos y glucógeno. Desde el punto de vista molecular, uno de los eventos más relevantes asociados al desarrollo de este tumor es la inactivación del gen *von Hippel–Lindau* (*VHL*), una alteración que favorece la estabilización de factores inducibles por hipoxia (*hypoxia-inducible factors*, HIF) y la activación de procesos relacionados con la angiogénesis, el metabolismo celular y la adaptación al microambiente tumoral. Sin embargo, el ccRCC es una enfermedad mucho más compleja que la simple pérdida de función de *VHL*, ya que en su desarrollo intervienen numerosas alteraciones genéticas, epigenéticas y transcriptómicas que contribuyen a su marcada heterogeneidad clínica y biológica.
+
+## Caracterización molecular del ccRCC y el proyecto TCGA
+
+La creciente disponibilidad de tecnologías de secuenciación masiva ha transformado profundamente el estudio de esta complejidad molecular. En este contexto, iniciativas internacionales como *The Cancer Genome Atlas* (TCGA) han supuesto un punto de inflexión en la investigación oncológica al proporcionar acceso abierto a grandes colecciones de datos genómicos, transcriptómicos, epigenómicos y clínicos de miles de pacientes. Gracias a estos recursos, los investigadores pueden analizar de forma integrada distintos niveles de información biológica y explorar cómo las alteraciones moleculares se relacionan con la aparición, progresión y evolución de los tumores.
+
+En el caso del carcinoma renal de células claras, la cohorte TCGA-KIRC (*Kidney Renal Clear Cell Carcinoma*) constituye una de las fuentes de información más completas y ampliamente utilizadas para el estudio de esta enfermedad. La combinación de datos moleculares y clínicos disponibles en esta cohorte permite investigar asociaciones entre perfiles biológicos y variables de interés clínico, como el estadio tumoral, el grado histológico, la supervivencia o la respuesta terapéutica. Como resultado, TCGA ha contribuido significativamente a la identificación de biomarcadores y posibles dianas terapéuticas con potencial aplicación clínica.
+
+## Transcriptómica en investigación oncológica
+
+Además de las alteraciones presentes en el genoma, los cambios en la expresión génica desempeñan un papel fundamental en el comportamiento de los tumores. La transcriptómica permite cuantificar simultáneamente la actividad de miles de genes, ofreciendo una visión global de los procesos biológicos que tienen lugar en una célula o tejido determinado. En oncología, el análisis transcriptómico se ha convertido en una herramienta esencial para identificar genes diferencialmente expresados, caracterizar subtipos moleculares, descubrir biomarcadores y comprender las rutas biológicas implicadas en la progresión tumoral. La aparición de tecnologías de secuenciación de ARN (*RNA sequencing*, RNA-seq) ha facilitado la generación de perfiles transcriptómicos de alta resolución, ampliando notablemente las posibilidades de investigación en este ámbito.
+
+## Bioinformática aplicada al análisis de datos oncológicos
+
+La interpretación de estos conjuntos de datos requiere el uso de herramientas capaces de gestionar y analizar grandes volúmenes de información biológica. En este sentido, la bioinformática desempeña un papel fundamental al integrar conocimientos de biología, estadística y ciencias de la computación para extraer información relevante a partir de datos complejos. Mediante el análisis conjunto de datos clínicos y transcriptómicos es posible identificar patrones de expresión génica asociados a determinadas características clínicas, explorar rutas biológicas alteradas y generar nuevas hipótesis sobre los mecanismos implicados en la progresión tumoral. De este modo, la combinación de recursos como TCGA y metodologías bioinformáticas constituye una estrategia clave para avanzar en la comprensión molecular del carcinoma renal de células claras y favorecer el desarrollo de enfoques de medicina de precisión orientados a mejorar el diagnóstico, el pronóstico y el tratamiento de los pacientes.
+
+\newpage
+
+# Objetivos
+
+## Objetivo general
+
+Aplicar técnicas bioinformáticas al análisis de datos clínicos y transcriptómicos de pacientes con carcinoma renal de células claras (TCGA-KIRC) con el fin de caracterizar la cohorte y explorar factores asociados a la progresión y supervivencia de la enfermedad.
+
+## Objetivos específicos
+
+1. Obtener y preparar los datos clínicos y transcriptómicos procedentes del proyecto TCGA-KIRC.
+2. Describir las principales características clínicas y demográficas de la cohorte.
+3. Analizar la asociación entre variables clinicopatológicas y la supervivencia de los pacientes.
+4. Explorar los datos transcriptómicos mediante herramientas bioinformáticas adecuadas.
+5. Integrar la información clínica y molecular para identificar patrones biológicos relevantes en el carcinoma renal de células claras.
 
 \newpage
 
@@ -294,7 +332,7 @@ En las secciones siguientes se abordará el procesamiento y análisis de los dat
 
 ## Análisis del conjunto de datos clínicos
 
-### Exploración inicial del conjunto clínico
+### Exploración inicial del conjunto de datos clínico
 
 Como parte inicial del estudio, se realizó un análisis exploratorio inicial con el objetivo de obtener una visión general de la estructura del conjunto de datos y caracterizar la naturaleza de las variables disponibles para los análisis posteriores. Este tipo de análisis constituye una etapa fundamental en el procesamiento de datos, ya que permite evaluar la calidad y consistencia de la información disponible, así como identificar posibles limitaciones del conjunto de datos, incluyendo la presencia de valores faltantes y la coexistencia de distintos tipos de variables, antes de aplicar métodos de análisis estadístico o técnicas de modelado más avanzadas.
 
@@ -988,6 +1026,11 @@ plot_categoricas <- function(data) {
 }
 ```
 
+```{r categorical-descriptive-plot, fig.width=13.0, fig.height=15.8, fig.align='center', out.width='97%', out.height='0.94\\textheight', fig.pos='p', fig.cap='Distribución de frecuencias relativas de las variables categóricas del conjunto de datos clínico TCGA-KIRC.'}
+# Mostrar la figura combinada de todas las variables categóricas
+plot_categoricas(categorical_plot_data)
+```
+
 Como puede observarse en la Figura \ref{fig:categorical-descriptive-plot}, las distribuciones gráficas son coherentes con los resultados resumidos en la Tabla \ref{tab:categorical-descriptive-statistics}. El gráfico permite identificar con mayor facilidad qué rasgos clínicos concentran las principales diferencias observadas dentro de la cohorte. En este sentido, se aprecia el predominio del estadio patológico I, la elevada frecuencia de determinadas categorías de la variable T, la concentración de los casos en NX o N0 y la mayor presencia de tumores no metastásicos.
 
 Desde el punto de vista demográfico, la población analizada sigue mostrando un predominio de pacientes de sexo masculino, de raza blanca y de origen no hispano o latino. Asimismo, la variable `vital_status` refleja una mayor proporción de pacientes vivos al cierre del seguimiento, mientras que `follow_ups_disease_response` apunta también hacia un predominio de pacientes libres de tumor.
@@ -995,13 +1038,6 @@ Desde el punto de vista demográfico, la población analizada sigue mostrando un
 La figura también permite apreciar qué variables mantienen distribuciones muy concentradas, aunque ya no extremas, como ocurre con `prior_malignancy`, y cuáles conservan una mayor heterogeneidad, como sucede con la estadificación tumoral, el grado histológico o el tabaquismo. En conjunto, esta visualización complementa la interpretación descriptiva del subconjunto clínico final analizado en este trabajo.
 
 En general, este patrón descriptivo es coherente con las características clínicas de la cohorte estudiada y confirma que el conjunto de variables seleccionado es adecuado para realizar los análisis posteriores. Las variables conservadas presentan un nivel de completitud aceptable y, además, incluyen información relevante sobre la enfermedad, como la extensión del tumor, el grado de agresividad histológica, el estado vital de los pacientes y diversos factores demográficos y clínicos. 
-
-```{r categorical-descriptive-plot, fig.width=13.0, fig.height=19.8, fig.align='center', out.width='97%', out.height='0.94\\textheight', fig.pos='p', fig.cap='Distribución de frecuencias relativas de las variables categóricas del conjunto de datos clínico TCGA-KIRC.'}
-# Mostrar la figura combinada de todas las variables categóricas
-plot_categoricas(categorical_plot_data)
-```
-
-\newpage
 
 ##### Variables continuas
 
@@ -1222,7 +1258,7 @@ En cambio, la variable `survival_time`, expresada en meses, presenta una mayor a
 
 En conjunto, estas gráficas permiten comprobar que las variables continuas del conjunto clínico no siguen un único patrón de distribución. Mientras algunas, como `age_at_diagnosis`, presentan una dispersión más contenida, otras, como `survival_time`, muestran una variabilidad mucho mayor entre pacientes. Esta diferencia resulta útil como referencia para los análisis posteriores, ya que ayuda a contextualizar mejor la heterogeneidad clínica presente en la cohorte TCGA-KIRC.
 
-```{r continuous-descriptive-plots-figure, fig.width=7.5, fig.height=6.5, fig.align='center', out.width='90%', fig.pos='H', fig.cap='Distribución de las variables continuas del conjunto de datos clínico TCGA-KIRC representada mediante diagrama de violín.'}
+```{r continuous-descriptive-plots-figure, fig.width=6.5, fig.height=5.5, fig.align='center', out.width='90%', fig.pos='H', fig.cap='Distribución de las variables continuas del conjunto de datos clínico TCGA-KIRC representada mediante diagrama de violín.'}
 # Figura combinada
 (p1 | p2) /
 (p3 | patchwork::plot_spacer())
@@ -1386,7 +1422,7 @@ Los resultados mostraron que el 56.84 % de los pacientes con tumores de alto gra
 
 Con el fin de explorar la supervivencia global de la cohorte, se construyó una curva de Kaplan-Meier utilizando las variables `survival_time` y `death_event`. Esta curva permite visualizar la probabilidad de supervivencia a lo largo del tiempo y proporciona una estimación de la mediana de supervivencia, así como de los intervalos de confianza asociados.
 
-```{r global-kaplan-meier-curve, fig.width=7.5, fig.height=6.2, fig.align='center', out.width='90%', fig.pos='H', fig.cap='Curva de Kaplan-Meier que muestra la supervivencia global de la cohorte TCGA-KIRC.'}
+```{r global-kaplan-meier-curve, fig.width=7.5, fig.height=4.2, fig.align='center', out.width='90%', fig.pos='H', fig.cap='Curva de Kaplan-Meier que muestra la supervivencia global de la cohorte TCGA-KIRC.'}
 # Cargar librerías necesarias
 library(survival)
 library(survminer)
@@ -1422,7 +1458,7 @@ En conjunto, la cohorte TCGA-KIRC presenta una supervivencia global relativament
 
 Tras analizar la supervivencia global de la cohorte, se procedió a evaluar la supervivencia según el estadio patológico AJCC (`ajcc_pathologic_stage`),uno de los principales factores pronósticos en oncología y ampliamente utilizado para estimar la extensión de la enfermedad y el pronóstico de los pacientes. Para ello, se construyeron curvas de Kaplan-Meier estratificadas por estadio AJCC (estadios I–IV), incluyendo intervalos de confianza del 95 % y tablas de riesgo. Las diferencias en supervivencia entre los distintos estadios se evaluaron mediante la prueba de log-rank.
 
-```{r ajcc-kaplan-meier-curve, fig.width=7.5, fig.height=9.2, fig.align='center', out.width='90%', fig.pos='H', fig.cap='Curvas de Kaplan-Meier estratificadas por estadio patológico AJCC, con intervalos de confianza y tabla de riesgo.'}
+```{r ajcc-kaplan-meier-curve, fig.width=7.5, fig.height=8.2, fig.align='center', out.width='90%', fig.pos='H', fig.cap='Curvas de Kaplan-Meier estratificadas por estadio patológico AJCC, con intervalos de confianza y tabla de riesgo.'}
 # Cargar librerías necesarias
 library(survival)
 library(viridis)
@@ -1514,7 +1550,7 @@ Aunque los pacientes clasificados como G1 mantuvieron una supervivencia del 100 
 
 En conjunto, estos resultados indican que un mayor grado tumoral se asocia con una menor supervivencia global y un peor pronóstico clínico, reforzando el valor del grado histológico como uno de los principales factores pronósticos en esta cohorte.
 
-```{r tumor-grade-kaplan-meier-curve-plot, fig.width=7.5, fig.height=9.2, fig.align='center', out.width='90%', fig.pos='H', fig.cap='Curvas de Kaplan-Meier estratificadas por grado tumoral, con intervalos de confianza y tabla de riesgo.'}
+```{r tumor-grade-kaplan-meier-curve-plot, fig.width=7.5, fig.height=8.2, fig.align='center', out.width='90%', fig.pos='H', fig.cap='Curvas de Kaplan-Meier estratificadas por grado tumoral, con intervalos de confianza y tabla de riesgo.'}
 
 # Paleta de colores personalizada para los grados tumorales
 grade_colors <- c(
@@ -1550,7 +1586,7 @@ ggsurvplot(fit_grade_km,
 
 La edad al diagnóstico (`age_at_diagnosis`) constituye uno de los factores pronósticos más relevantes en numerosos tipos de cáncer, ya que puede influir tanto en la evolución de la enfermedad como en la respuesta al tratamiento. Por ello, se evaluó su impacto sobre la supervivencia global mediante curvas de Kaplan-Meier estratificadas por grupos de edad. Los pacientes se clasificaron en tres categorías: menores de 50 años, entre 50 y 70 años y mayores de 70 años. Las curvas se representaron junto con sus intervalos de confianza del 95 % y las correspondientes tablas de riesgo. Las diferencias en supervivencia entre los distintos grupos de edad se evaluaron mediante la prueba de log-rank.
 
-```{r age-kaplan-meier-curve, fig.width=7.5, fig.height=9.2, fig.align='center', out.width='90%', fig.pos='H', fig.cap='Curvas de Kaplan-Meier estratificadas por grupos de edad al diagnóstico, con intervalos de confianza y tabla de riesgo.'}
+```{r age-kaplan-meier-curve, fig.width=7.5, fig.height=8.2, fig.align='center', out.width='90%', fig.pos='H', fig.cap='Curvas de Kaplan-Meier estratificadas por grupos de edad al diagnóstico, con intervalos de confianza y tabla de riesgo.'}
 # Cargar librerías necesarias
 library(survival)
 library(survminer)
@@ -1658,7 +1694,7 @@ Asimismo, la tabla de riesgo mostró una disminución gradual del número de pac
 
 Este resultado fue confirmado mediante la prueba de log-rank, que no detectó diferencias estadísticamente significativas entre hombres y mujeres (*p* = 0,75). En conjunto, estos hallazgos indican que, en esta cohorte, el sexo no se asoció de forma significativa con la supervivencia global cuando se analizó de manera individual. Por tanto, su influencia sobre el pronóstico parece limitada en comparación con otras variables clínicas y patológicas evaluadas en el estudio, las cuales mostraron una mayor capacidad para discriminar entre grupos con diferente evolución clínica.
 
-```{r sex-kaplan-meier-curve-plot, fig.width=7.5, fig.height=9.2, fig.align='center', out.width='90%', fig.pos='H', fig.cap='Curvas de Kaplan-Meier estratificadas por sexo, con intervalos de confianza y tabla de riesgo.'}
+```{r sex-kaplan-meier-curve-plot, fig.width=7.5, fig.height=8.2, fig.align='center', out.width='90%', fig.pos='H', fig.cap='Curvas de Kaplan-Meier estratificadas por sexo, con intervalos de confianza y tabla de riesgo.'}
 # Representar la curva de Kaplan-Meier
 ggsurvplot(fit_sex_km,
            data = clinical_data_sex, 
@@ -1783,7 +1819,7 @@ summary(simulated_proportions)
 sd(simulated_proportions)
 ```
 
-```{r simulation-code-plot, fig.width=7.5, fig.height=6.5, fig.align='center', out.width='90%', fig.pos='H', fig.cap='Distribución de la proporción de pacientes con enfermedad avanzada (estadios III-IV) obtenida a partir de 1000 cohortes simuladas mediante remuestreo bootstrap.'}
+```{r simulation-code-plot, fig.width=7.5, fig.height=4.5, fig.align='center', out.width='90%', fig.pos='H', fig.cap='Distribución de la proporción de pacientes con enfermedad avanzada (estadios III-IV) obtenida a partir de 1000 cohortes simuladas mediante remuestreo bootstrap.'}
 # Cargar librerías necesarias
 library(ggplot2)
 
@@ -1811,9 +1847,142 @@ Estos resultados sugieren que la proporción de pacientes diagnosticados en esta
 
 \newpage
 
-## Análisis de los datos transcriptómicos
+## Análisis del conjunto de datos transcriptómicos
 
-### Exploración inicial del conjunto clínico
+### Extracción de la matriz de conteos
+
+Como primera etapa del análisis transcriptómico, se cargó el objeto previamente preparado a partir de los datos descargados de GDC mediante `TCGAbiolinks`. Este objeto corresponde a una instancia de la clase `RangedSummarizedExperiment`, por lo que los datos de expresión no se encuentran directamente en formato `data.frame`, sino almacenados dentro de los assays del objeto.
+
+```{r inspect-transcriptomic-object}
+# Cargar librerías necesarias
+library(SummarizedExperiment)
+
+# Cargar el objeto transcriptómico
+prepared_transcriptomic_file <- file.path(
+  data_dir,
+  "prepared",
+  "tcga_kirc_star_counts_se.rds"
+)
+
+transcriptomic_data <- readRDS(prepared_transcriptomic_file)
+
+# Comprobar la clase del objeto
+class(transcriptomic_data)
+
+# Mostrar su estructura general
+transcriptomic_data
+
+# Mostrar los assays disponibles
+assayNames(transcriptomic_data)
+```
+
+Por este motivo, antes de realizar la exploración descriptiva del conjunto de datos, se extrajo la matriz de conteos crudos correspondiente al assay unstranded. Esta matriz contiene los genes en las filas y las muestras en las columnas, y constituye la estructura principal sobre la que se desarrollarán las etapas posteriores del análisis.
+
+```{r extract-count-matrix}
+# Cargar librerías necesarias
+library(SummarizedExperiment)
+
+# Extraer la matriz de conteos crudos desde el assay seleccionado
+counts_matrix <- assay(transcriptomic_data, "unstranded")
+
+# Comprobar la clase y dimensiones de la matriz
+class(counts_matrix)
+dim(counts_matrix)
+
+# Visualizar una pequeña parte de la matriz
+counts_matrix[1:5, 1:5]
+```
+
+Una vez extraída la matriz de conteos a partir del objeto `RangedSummarizedExperiment`, los datos de expresión génica pasaron a estar disponibles en un formato matricial convencional, con los genes organizados en las filas y las muestras en las columnas. Para facilitar su manipulación y análisis mediante herramientas del ecosistema tidyverse, la matriz se convirtió a un objeto de tipo `data.frame`. A continuación, se realizó una exploración inicial de la estructura de los datos con el objetivo de verificar sus dimensiones, identificar el número de genes y muestras disponibles, y examinar el formato de las variables.
+
+```{r create-counts-dataframe}
+# Cargar librerías necesarias
+library(tibble)
+library(dplyr)
+
+# Convertir la matriz de conteos a data frame
+counts_df <- as.data.frame(counts_matrix) |>
+  rownames_to_column("gene_id")
+
+# Dimensiones del data frame
+dim(counts_df)
+
+cat("Número de genes:", nrow(counts_df), "\n")
+cat("Número de columnas totales:", ncol(counts_df), "\n")
+cat("Número de muestras transcriptómicas:", ncol(counts_df) - 1, "\n")
+
+# Ver los primeros identificadores de genes
+head(counts_df$gene_id)
+
+# Ver los primeros nombres de columnas
+head(colnames(counts_df))
+
+# Ver primeros genes y primeras muestras
+counts_df[1:5, 1:6]
+
+# Comprobar tipos de variables
+variable_types <- tibble(
+  columna = names(counts_df),
+  tipo = sapply(counts_df, class)
+)
+
+variable_types
+```
+
+La matriz de conteos transcriptómicos presenta 60.660 filas y 615 columnas. Las filas corresponden a identificadores génicos en formato `Ensembl`, como `ENSG00000000003.15`, mientras que las columnas corresponden a una variable identificadora del gen (`gene_id`) y a 614 muestras transcriptómicas de TCGA-KIRC.
+
+Los nombres de las columnas de expresión corresponden a códigos de muestra TCGA completos, por ejemplo TCGA-B8-4146-01B-11R-1672-07. Cada celda de la matriz contiene un valor entero que representa el número de lecturas asignadas a un gen concreto en una muestra determinada. Por tanto, la matriz tiene una estructura genes × muestras.
+
+La comprobación de los tipos de variables confirma que `gene_id` es una variable de tipo carácter, mientras que las 614 columnas restantes son variables enteras, correspondientes a los conteos crudos de expresión génica.
+
+### Evaluación del patrón de valores faltantes
+
+Con el objetivo de evaluar la calidad de los datos transcriptómicos y detectar posibles problemas relacionados con valores faltantes, se realizó un análisis de la presencia de NA en la matriz de conteos.
+
+```{r check-missing-values}
+# Comprobar la presencia de valores faltantes en la matriz de conteos
+sum(is.na(counts_df))
+```
+
+A la vista de los resultados, no se detectaron valores faltantes en la matriz de conteos transcriptómicos, lo que indica que el conjunto de datos está completo y no presenta problemas relacionados con la ausencia de información en las variables de expresión génica. La ausencia de valores faltantes es consistente con la naturaleza de los datos de RNA-seq procesados por TCGA, donde los genes sin expresión se representan mediante conteos iguales a cero y no mediante valores ausentes.
+
+### Preparación de los datos transcriptómicos
+
+#### Conversión de identificadores Ensembl a símbolos génicos
+
+Los identificadores presentes en la columna `gene_id` corresponden a identificadores de genes de la base de datos `Ensembl`, utilizados habitualmente en los datos transcriptómicos descargados desde TCGA. Aunque estos identificadores permiten una referencia unívoca de cada gen, su interpretación biológica resulta menos intuitiva que la de los símbolos génicos convencionales (por ejemplo, TP53, VHL o PBRM1).
+
+Por este motivo, se realizó una conversión de los identificadores `Ensembl` a símbolos génicos utilizando el paquete `org.Hs.eg.db` de R/Bioconductor, que contiene anotaciones actualizadas para genes humanos, junto con el paquete `AnnotationDbi`, que proporciona las funciones necesarias para realizar la correspondencia entre diferentes sistemas de identificación génica. 
+
+Previamente a la conversión, se eliminaron los sufijos de versión presentes en los identificadores`Ensembl` (por ejemplo, .15 en ENSG00000000003.15), ya que estos no son reconocidos por las bases de anotación empleadas.
+
+```{r convert-gene-identifiers}
+# Cargar librerías necesarias
+library(org.Hs.eg.db)
+library(AnnotationDbi)
+
+# Eliminar el sufijo de versión de los identificadores Ensembl
+ensembl_ids <- sub("\\..*", "", counts_df$gene_id)
+
+# Convertir identificadores Ensembl a símbolos génicos
+gene_symbols <- mapIds(
+  org.Hs.eg.db,
+  keys = ensembl_ids,
+  column = "SYMBOL",
+  keytype = "ENSEMBL",
+  multiVals = "first"
+)
+
+# Añadir los símbolos génicos al data frame
+counts_df$gene_symbol <- gene_symbols
+
+# Visualizar los primeros resultados
+head(
+  counts_df[, c("gene_id", "gene_symbol")]
+)
+```
+
+Tras esta conversión, cada fila del conjunto de datos dispone tanto de su identificador Ensembl original como de su correspondiente símbolo génico, facilitando la interpretación biológica de los análisis posteriores y la presentación de resultados.
 
 \newpage
 
