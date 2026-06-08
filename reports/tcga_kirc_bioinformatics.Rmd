@@ -2032,6 +2032,10 @@ table(sample_metadata$sample_type)
 
 \newpage
 
+# Shiny App
+
+\newpage
+
 # Conclusiones
 
 \newpage
