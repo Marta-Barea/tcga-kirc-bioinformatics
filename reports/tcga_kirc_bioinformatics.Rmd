@@ -15,7 +15,7 @@ output:
       - -V
       - colorlinks=true
       - -V
-      - linkcolor=uocblue
+      - linkcolor=black
       - -V
       - urlcolor=uocblue
       - -V
@@ -1474,7 +1474,6 @@ La Figura \ref{fig:ajcc-kaplan-meier-curve} muestra una asociación significativ
 
 Los pacientes clasificados en estadio III mostraron una supervivencia intermedia, con una disminución progresiva de la probabilidad de supervivencia hasta situarse en torno al 45-50 % a partir de los 72-84 meses (6-7 años). Por su parte, los pacientes en estadio II presentaron una evolución más favorable, con una supervivencia superior al 80 % durante los primeros 60 meses (5 años) y cercana al 60 % en los últimos periodos de seguimiento disponibles. En conjunto, estos resultados evidencian que los estadios avanzados se asocian a una reducción sustancial de la supervivencia global, mientras que los estadios iniciales mantienen un pronóstico considerablemente más favorable a largo plazo.
 
-
 #### Supervivencia según el grado tumoral
 
 El grado tumoral (`tumor_grade`) es otro de los principales factores pronósticos en el carcinoma de células renales. Para evaluar su impacto en la supervivencia global, se construyeron curvas de Kaplan-Meier estratificadas por grado tumoral (G1-G4), incluyendo intervalos de confianza del 95 % y tablas de riesgo. Por otro lado, las diferencias en supervivencia entre los distintos grados tumorales se evaluaron mediante la prueba de log-rank.
@@ -1748,9 +1747,73 @@ De igual forma, la edad al diagnóstico mostró una asociación significativa co
 
 El modelo presentó una buena capacidad discriminativa (índice de concordancia = 0,762), lo que indica una adecuada capacidad para diferenciar entre pacientes con distinto riesgo. Además, la evaluación del supuesto de riesgos proporcionales mediante la prueba de residuos de Schoenfeld sugirió una posible variación temporal del efecto del estadio tumoral (*p* = 0,0029), así como del modelo global (*p* = 0,0131). A pesar de esta limitación, los resultados ponen de manifiesto que el estadio avanzado, el alto grado histológico y la mayor edad al diagnóstico se asocian con una peor supervivencia en esta cohorte de pacientes.
 
+### Simulación de cohortes clínicas mediante remuestreo
+
+Una vez analizadas las principales características clínicas de la cohorte TCGA-KIRC y evaluada su influencia sobre la supervivencia de los pacientes, se realizó un estudio de simulación con el objetivo de explorar la variabilidad esperada de algunas características clínicas cuando se generan nuevas cohortes de pacientes a partir de la muestra observada.
+
+En este caso, se empleó una estrategia de remuestreo (bootstrap) que permite generar múltiples cohortes simuladas manteniendo las características observadas en los datos originales. Concretamente, se estudió la proporción de pacientes diagnosticados en estadios avanzados de la enfermedad (estadios III y IV), ya que los análisis previos mostraron que estos pacientes presentan una supervivencia significativamente inferior respecto a aquellos diagnosticados en estadios tempranos.
+
+```{r simulation-code}
+# Definir semilla
+set.seed(123)
+
+# Definir estadios avanzados
+advanced_stages <- c("Stage III", "Stage IV")
+
+# Número de simulaciones
+n_sim <- 1000
+
+# Ejecutar simulación
+simulated_proportions <- replicate(
+  n_sim,
+  {
+    simulated_sample <- sample(
+      clinical_data_final$ajcc_pathologic_stage,
+      size = nrow(clinical_data_final),
+      replace = TRUE
+    )
+
+    mean(simulated_sample %in% advanced_stages)
+  }
+)
+
+# Resumen de resultados
+summary(simulated_proportions)
+
+sd(simulated_proportions)
+```
+
+```{r simulation-code-plot, fig.width=7.5, fig.height=6.5, fig.align='center', out.width='90%', fig.pos='H', fig.cap='Distribución de la proporción de pacientes con enfermedad avanzada (estadios III-IV) obtenida a partir de 1000 cohortes simuladas mediante remuestreo bootstrap.'}
+# Cargar librerías necesarias
+library(ggplot2)
+
+# Graficar histogramas
+ggplot(
+  data.frame(proportion = simulated_proportions),
+  aes(x = proportion)
+) +
+  geom_histogram(
+    bins = 30,
+    fill = "#0B7285",
+    color = "white"
+  ) +
+  labs(
+    x = "Proporción de estadios avanzados",
+    y = "Frecuencia",
+    title = "Distribución de cohortes simuladas"
+  ) +
+  theme_minimal()
+```
+
+Los resultados de la simulación mostraron una proporción media de pacientes con enfermedad avanzada (estadios III-IV) del 38,6 %, con una desviación estándar de únicamente 0,020. La distribución obtenida presentó una forma aproximadamente normal y se concentró alrededor del valor observado en la cohorte original.
+
+Estos resultados sugieren que la proporción de pacientes diagnosticados en estadios avanzados es una característica relativamente estable de la cohorte TCGA-KIRC. En conjunto, estos resultados sugieren que la proporción de pacientes con enfermedad avanzada observada en TCGA-KIRC constituye un patrón estable de la cohorte y no una consecuencia de variaciones aleatorias del muestreo.
+
 \newpage
 
-# Análisis de los datos transcriptómicos
+## Análisis de los datos transcriptómicos
+
+### Exploración inicial del conjunto clínico
 
 \newpage
 
