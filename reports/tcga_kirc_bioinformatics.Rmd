@@ -1849,7 +1849,9 @@ Estos resultados sugieren que la proporción de pacientes diagnosticados en esta
 
 ## Análisis del conjunto de datos transcriptómicos
 
-### Extracción de la matriz de conteos
+### Exploración y preparación de los datos transcriptómicos
+
+#### Extracción e inspección de la matriz de conteos
 
 Como primera etapa del análisis transcriptómico, se cargó el objeto previamente preparado a partir de los datos descargados de GDC mediante `TCGAbiolinks`. Este objeto corresponde a una instancia de la clase `RangedSummarizedExperiment`, por lo que los datos de expresión no se encuentran directamente en formato `data.frame`, sino almacenados dentro de los assays del objeto.
 
@@ -1935,7 +1937,7 @@ Los nombres de las columnas de expresión corresponden a códigos de muestra TCG
 
 La comprobación de los tipos de variables confirma que `gene_id` es una variable de tipo carácter, mientras que las 614 columnas restantes son variables enteras, correspondientes a los conteos crudos de expresión génica.
 
-### Evaluación del patrón de valores faltantes
+#### Evaluación del patrón de valores faltantes
 
 Con el objetivo de evaluar la calidad de los datos transcriptómicos y detectar posibles problemas relacionados con valores faltantes, se realizó un análisis de la presencia de NA en la matriz de conteos.
 
@@ -1946,9 +1948,7 @@ sum(is.na(counts_df))
 
 A la vista de los resultados, no se detectaron valores faltantes en la matriz de conteos transcriptómicos, lo que indica que el conjunto de datos está completo y no presenta problemas relacionados con la ausencia de información en las variables de expresión génica. La ausencia de valores faltantes es consistente con la naturaleza de los datos de RNA-seq procesados por TCGA, donde los genes sin expresión se representan mediante conteos iguales a cero y no mediante valores ausentes.
 
-### Preparación de los datos transcriptómicos
-
-#### Conversión de identificadores Ensembl a símbolos génicos
+#### Anotación génica mediante símbolos oficiales
 
 Los identificadores presentes en la columna `gene_id` corresponden a identificadores de genes de la base de datos `Ensembl`, utilizados habitualmente en los datos transcriptómicos descargados desde TCGA. Aunque estos identificadores permiten una referencia unívoca de cada gen, su interpretación biológica resulta menos intuitiva que la de los símbolos génicos convencionales (por ejemplo, TP53, VHL o PBRM1).
 
@@ -1983,6 +1983,52 @@ head(
 ```
 
 Tras esta conversión, cada fila del conjunto de datos dispone tanto de su identificador Ensembl original como de su correspondiente símbolo génico, facilitando la interpretación biológica de los análisis posteriores y la presentación de resultados.
+
+#### Clasificación de las muestras según tipo de tejido
+
+Para clasificar las muestras transcriptómicas según el tipo de tejido, se utilizaron los códigos TCGA incluidos en los identificadores de muestra. A diferencia de la columna `gene_id`, que identifica los genes, los nombres de las columnas de la matriz de conteos corresponden a muestras individuales.En los identificadores de muestra de TCGA, los caracteres 14 y 15 corresponden al código de tipo de muestra (*Sample Type Code*). Según la nomenclatura oficial del GDC, el código `01` identifica muestras de tumor sólido primario (*Primary Solid Tumor*), mientras que el código `11` corresponde a muestras de tejido normal sólido (*Solid Tissue Normal*)[@gdc_sample_type_codes; @gdc_tcga_barcode].
+
+```{r check-sample-types}
+table(substr(colnames(counts_matrix), 14, 15))
+```
+
+La clasificación de las muestras a partir de los códigos TCGA reveló la presencia de 541 muestras correspondientes a tumores primarios (`01`) y 72 muestras de tejido normal sólido (`11`). Además, se identificó una única muestra clasificada con el código `05`, correspondiente a una muestra adicional no incluida en los grupos principales de comparación. Dado que esta categoría está representada por una sola observación, se consideró su exclusión para evitar sesgos estadísticos y garantizar la comparabilidad entre grupos.
+
+A partir de esta información se construyó una tabla de metadatos de muestra que incluye el identificador completo de la muestra, el identificador del paciente y el tipo de tejido correspondiente.
+
+```{r classify-sample-tissue-type}
+# Cargar librerías necesarias
+library(dplyr)
+library(tibble)
+
+# Extraer identificadores de las muestras transcriptómicas
+sample_ids <- colnames(counts_matrix)
+
+# Crear tabla de metadatos de muestras
+sample_metadata <- tibble(
+  sample_id = sample_ids,
+  patient_id = substr(sample_ids, 1, 12),
+  sample_type_code = substr(sample_ids, 14, 15),
+  sample_type = case_when(
+    sample_type_code == "01" ~ "Tumor primario",
+    sample_type_code == "11" ~ "Tejido normal",
+    TRUE ~ "Otro"
+  )
+)
+
+# Mantener únicamente muestras tumorales y normales
+sample_metadata <- sample_metadata |>
+  filter(sample_type_code %in% c("01", "11"))
+
+# Visualizar las primeras muestras
+head(sample_metadata)
+
+# Comprobar la distribución final
+table(sample_metadata$sample_type)
+```
+
+### Preparación de los datos para el análisis de expresión diferencial
+
 
 \newpage
 
