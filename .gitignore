@@ -55,5 +55,14 @@ po/*~
 # RStudio Connect folder
 rsconnect/
 
+# Render auxiliares en reports/
+reports/*.log
+reports/*.aux
+reports/*.out
+reports/*.toc
+reports/*.fls
+reports/*.fdb_latexmk
+reports/*.synctex.gz
+
 # MANIFEST.txt
 MANIFEST.txt
