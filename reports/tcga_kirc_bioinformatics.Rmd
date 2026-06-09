@@ -55,6 +55,8 @@ knitr::opts_chunk$set(
 )
 options(width = 72)
 
+library(magrittr)
+
 default_chunk_hook <- knitr::knit_hooks$get("chunk")
 
 if (is.null(default_chunk_hook)) {
@@ -178,6 +180,24 @@ knitr::knit_hooks$set(chunk = function(x, options) {
     "\n"
   )
 })
+
+style_report_table <- function(kable_output, latex_options = "hold_position") {
+  kable_output %>%
+    kableExtra::kable_styling(
+      latex_options = latex_options,
+      font_size = 9,
+      repeat_header_text = ""
+    ) %>%
+    kableExtra::row_spec(0, bold = TRUE, align = "c")
+}
+
+add_table_label <- function(kable_output, label) {
+  sub(
+    "(\\\\caption\\{[^}]*\\})",
+    paste0("\\1\n\\\\label{", label, "}"),
+    kable_output
+  )
+}
 ```
 
 ```{=latex}
@@ -362,15 +382,20 @@ software_packages_latex <- knitr::kable(
   software_packages,
   format = "latex",
   booktabs = TRUE,
-  align = c("l", "c")
+  row.names = FALSE,
+  linesep = "",
+  caption = "Principales paquetes utilizados en el flujo de trabajo y sus versiones instaladas.",
+  col.names = c("Paquete", "Versión"),
+  align = c("c", "c")
+) %>%
+  style_report_table()
+
+software_packages_latex <- add_table_label(
+  software_packages_latex,
+  "tab:software-packages"
 )
 
-cat("\\begin{table}[!htbp]\n")
-cat("\\centering\n")
-cat("\\caption{Principales paquetes utilizados en el flujo de trabajo y sus versiones instaladas.}\n")
-cat("\\label{tab:software-packages}\n")
 cat(software_packages_latex)
-cat("\n\\end{table}\n")
 cat("\\FloatBarrier\n")
 ```
 
@@ -416,20 +441,13 @@ bioinformatics_workflow_latex <- knitr::kable(
   col.names = c("Fase", "Descripción"),
   align = c("l", "l")
 ) %>%
-  kable_styling(
-    latex_options = c("hold_position", "striped"),
-    stripe_color = "gray!10",
-    font_size = 9,
-    position = "center"
-  ) %>%
-  row_spec(0, bold = TRUE, background = "gray!20") %>%
+  style_report_table() %>%
   column_spec(1, width = "4.2cm", bold = TRUE) %>%
   column_spec(2, width = "9.6cm")
 
-bioinformatics_workflow_latex <- sub(
-  "(\\\\caption\\{[^}]*\\})",
-  "\\1\n\\\\label{tab:bioinformatics-workflow}",
-  bioinformatics_workflow_latex
+bioinformatics_workflow_latex <- add_table_label(
+  bioinformatics_workflow_latex,
+  "tab:bioinformatics-workflow"
 )
 
 cat(bioinformatics_workflow_latex)
@@ -486,51 +504,57 @@ Entre las categorías disponibles se incluyen datos clínicos y diferentes tipos
 
 En la siguiente tabla se resumen las principales categorías de datos disponibles en el proyecto TCGA-KIRC, junto con una breve descripción de cada una de ellas:
 
-\begin{table}[H]
-\centering
-\renewcommand{\arraystretch}{1.45}
-\setlength{\tabcolsep}{8pt}
+```{r tcga-categories-table, echo=FALSE, results='asis'}
+library(kableExtra)
 
-\caption{Principales categorías de datos disponibles en el proyecto}
-\label{tab:categorias_tcga}
+tcga_categories <- data.frame(
+  Categoria = c(
+    "Simple Nucleotide Variation",
+    "Sequencing Reads",
+    "Biospecimen",
+    "Clinical",
+    "Copy Number Variation",
+    "Transcriptome Profiling",
+    "DNA Methylation",
+    "Proteome Profiling",
+    "Somatic Structural Variation",
+    "Structural Variation"
+  ),
+  Descripcion = c(
+    "Información sobre mutaciones puntuales y pequeños cambios en el ADN de las muestras tumorales.",
+    "Lecturas de secuenciación obtenidas directamente de los experimentos antes de su procesamiento.",
+    "Datos relacionados con las muestras biológicas utilizadas en el estudio, como tejido tumoral o tejido normal.",
+    "Información clínica y demográfica de los pacientes incluidos en el proyecto.",
+    "Cambios en el número de copias de determinadas regiones del ADN o de algunos genes.",
+    "Datos de expresión génica obtenidos mediante tecnologías RNA-Seq.",
+    "Información sobre modificaciones químicas del ADN relacionadas con la regulación génica.",
+    "Datos sobre la presencia y cantidad de proteínas en las muestras analizadas.",
+    "Alteraciones estructurales adquiridas en el genoma de las células tumorales.",
+    "Cambios estructurales de gran tamaño presentes en regiones del genoma."
+  ),
+  stringsAsFactors = FALSE
+)
 
-\begin{tabular}{|>{\centering\arraybackslash}p{4.5cm}|p{9cm}|}
-\hline
-\rowcolor[HTML]{EAEAEA}
-\textbf{Categoría} & \textbf{Descripción} \\
-\hline
-Simple Nucleotide Variation &
-Información sobre mutaciones puntuales y pequeños cambios en el ADN de las muestras tumorales. \\
-\hline
-Sequencing Reads &
-Lecturas de secuenciación obtenidas directamente de los experimentos antes de su procesamiento. \\
-\hline
-Biospecimen &
-Datos relacionados con las muestras biológicas utilizadas en el estudio, como tejido tumoral o tejido normal. \\
-\hline
-Clinical &
-Información clínica y demográfica de los pacientes incluidos en el proyecto. \\
-\hline
-Copy Number Variation &
-Cambios en el número de copias de determinadas regiones del ADN o de algunos genes. \\
-\hline
-Transcriptome Profiling &
-Datos de expresión génica obtenidos mediante tecnologías RNA-Seq. \\
-\hline
-DNA Methylation &
-Información sobre modificaciones químicas del ADN relacionadas con la regulación génica. \\
-\hline
-Proteome Profiling &
-Datos sobre la presencia y cantidad de proteínas en las muestras analizadas. \\
-\hline
-Somatic Structural Variation &
-Alteraciones estructurales adquiridas en el genoma de las células tumorales. \\
-\hline
-Structural Variation &
-Cambios estructurales de gran tamaño presentes en regiones del genoma. \\
-\hline
-\end{tabular}
-\end{table}
+tcga_categories_latex <- knitr::kable(
+  tcga_categories,
+  format = "latex",
+  booktabs = TRUE,
+  linesep = "",
+  caption = "Principales categorías de datos disponibles en el proyecto",
+  col.names = c("Categoría", "Descripción"),
+  align = c("l", "l")
+) %>%
+  style_report_table() %>%
+  column_spec(1, width = "4.5cm") %>%
+  column_spec(2, width = "9cm")
+
+tcga_categories_latex <- add_table_label(
+  tcga_categories_latex,
+  "tab:categorias_tcga"
+)
+
+cat(tcga_categories_latex)
+```
 
 Tal y como se ha visto en la Tabla \ref{tab:categorias_tcga} y en la exploración previa del portal GDC, el proyecto TCGA-KIRC reúne varios tipos de datos. En este trabajo, no obstante, se decidió trabajar solo con dos conjuntos de información. Por un lado, los datos de **Transcriptome Profiling**, que contienen los recuentos de expresión génica obtenidos mediante RNA-Seq. Por otro, los datos **Clinical**, que aportan la información clínica y demográfica necesaria para contextualizar los resultados moleculares.
 
@@ -625,18 +649,22 @@ table_latex <- knitr::kable(
   files_table,
   format = "latex",
   booktabs = TRUE,
-  align = c("l", "r", "r", "l", "r")
+  linesep = "",
+  caption = "Resumen de las carpetas principales del directorio data",
+  col.names = c("Carpeta", "Tamaño (MB)", "Archivos", "Formatos", "Subcarpetas"),
+  align = c("c", "c", "c", "c", "c")
+) %>%
+  style_report_table()
+
+table_latex <- add_table_label(
+  table_latex,
+  "tab:data-directory-summary"
 )
 ```
 
 ```{r data-directory-summary-table, echo=FALSE, results='asis'}
 # Mostrar la tabla resumen
-cat("\\begin{table}[!htbp]\n")
-cat("\\centering\n")
-cat("\\caption{Resumen de las carpetas principales del directorio data}\n")
-cat("\\label{tab:data-directory-summary}\n")
 cat(table_latex)
-cat("\n\\end{table}\n")
 cat("\\FloatBarrier\n")
 ```
 
@@ -931,7 +959,7 @@ Como resultado de este procedimiento, se eliminaron 12 variables con escasa o nu
 
 Una vez eliminadas las variables con varianza nula o casi nula, se evaluó la presencia de variables redundantes mediante la identificación de duplicidades exactas entre columnas. A diferencia de los análisis basados en correlación, este procedimiento permite detectar variables que contienen exactamente la misma información, incluso cuando presentan nombres distintos.
 
-```{r redundant-vars-code}
+```{r redundant-vars-code, results='asis'}
 # Identificar pares de variables exactamente redundantes
 are_identical_variables <- function(x, y) {
   identical(is.na(x), is.na(y)) &&
@@ -970,10 +998,18 @@ if (length(duplicate_variable_pairs) > 0) {
     "Variable_2"
   )
 
-  knitr::kable(
+  duplicate_variables_latex <- knitr::kable(
     duplicate_variables_table,
-    caption = "Pares de variables con duplicidad exacta detectados."
-  )
+    format = "latex",
+    booktabs = TRUE,
+    linesep = "",
+    caption = "Pares de variables con duplicidad exacta detectados.",
+    col.names = c("Variable 1", "Variable 2"),
+    align = c("c", "c")
+  ) %>%
+    style_report_table()
+
+  cat(duplicate_variables_latex)
 
 } else {
 
@@ -2179,8 +2215,6 @@ Los resultados de la simulación mostraron una proporción media de pacientes co
 
 Estos resultados sugieren que la proporción de pacientes diagnosticados en estadios avanzados es una característica relativamente estable de la cohorte TCGA-KIRC. En conjunto, estos resultados sugieren que la proporción de pacientes con enfermedad avanzada observada en TCGA-KIRC constituye un patrón estable de la cohorte y no una consecuencia de variaciones aleatorias del muestreo.
 
-\newpage
-
 ## Análisis del conjunto de datos transcriptómicos
 
 ### Exploración y preparación de los datos transcriptómicos
@@ -2610,8 +2644,6 @@ La presencia de **CA9 (Carbonic Anhydrase IX)** resulta particularmente relevant
 Asimismo, la sobreexpresión de **PVT1**, un ARN largo no codificante con funciones oncogénicas descritas en diversos tumores sólidos, ha sido asociada con la progresión tumoral y el peor pronóstico en carcinoma renal de células claras [@ren_pvt1_ccrcc_2019].
 
 Aunque el gen **VHL** no aparece entre los genes etiquetados con mayor significación estadística, este resultado no resulta inesperado. En ccRCC, la relevancia biológica de VHL deriva principalmente de mutaciones, deleciones o pérdida de función proteica más que de cambios extremos en sus niveles de expresión génica [@kaelin_vhl_kidney_cancer_2004]. En consecuencia, la activación de genes diana regulados por HIF suele constituir una evidencia más clara de la alteración de esta vía que la propia expresión de VHL [@schodel_hypoxia_renal_cancer_2019; @choueiri_hif2_vegf_2020].
-
-\newpage
 
 ## Integración de datos clínicos y transcriptómicos
 
