@@ -327,6 +327,22 @@ Aplicar técnicas bioinformáticas al análisis de datos clínicos y transcript�
 4. Explorar los datos transcriptómicos mediante herramientas bioinformáticas adecuadas.
 5. Integrar la información clínica y molecular para identificar patrones biológicos relevantes en el carcinoma renal de células claras.
 
+## Preguntas de investigación
+
+Con el fin de orientar el análisis de los datos y dar respuesta a los objetivos planteados, se formularon las siguientes preguntas de investigación:
+
+1. ¿Existe asociación entre la edad al diagnóstico y las características clinicopatológicas de los pacientes, como el estadio patológico o el grado tumoral?
+
+2. ¿Cómo influyen variables clínicas como el estadio tumoral, el grado histológico, la edad al diagnóstico o el sexo biológico en la supervivencia de los pacientes con carcinoma renal de células claras?
+
+3. ¿Presentan las muestras tumorales y normales perfiles transcriptómicos diferenciados que permitan distinguir ambos grupos mediante técnicas de análisis exploratorio multivariante?
+
+4. ¿Qué genes muestran diferencias significativas de expresión entre tejido tumoral y tejido normal y podrían estar relacionados con la biología del carcinoma renal de células claras?
+
+5. ¿Existe relación entre la expresión de determinados genes candidatos y el pronóstico de los pacientes de la cohorte TCGA-KIRC?
+
+6. ¿Puede la integración de información clínica y transcriptómica aportar una caracterización más completa de la enfermedad?
+
 \newpage
 
 # Materiales y Métodos
