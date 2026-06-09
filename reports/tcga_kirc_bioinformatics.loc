@@ -1,0 +1,47 @@
+\contentsline {codeblock}{\numberline {Codigo~1}Exploracion inicial del proyecto TCGA-KIRC en el portal GDC}{12}{codeblock.1}%
+\contentsline {codeblock}{\numberline {Codigo~2}Comando de ejecucion del script de descarga y preparacion de datos}{15}{codeblock.2}%
+\contentsline {codeblock}{\numberline {Codigo~3}Contenido del script de descarga y preparacion de datos TCGA-KIRC}{15}{codeblock.3}%
+\contentsline {codeblock}{\numberline {Codigo~4}Resumen estructural del directorio de datos del proyecto}{18}{codeblock.4}%
+\contentsline {codeblock}{\numberline {Codigo~5}Inspeccion inicial del conjunto de datos clinicos preparado}{20}{codeblock.5}%
+\contentsline {codeblock}{\numberline {Codigo~6}Definicion del tema grafico del mapa de calor de valores faltantes}{23}{codeblock.6}%
+\contentsline {codeblock}{\numberline {Codigo~7}Construccion de los datos y del grafico base del mapa de calor de valores faltantes}{23}{codeblock.7}%
+\contentsline {codeblock}{\numberline {Codigo~8}Representacion del mapa de calor de valores faltantes del conjunto clinico}{25}{codeblock.8}%
+\contentsline {codeblock}{\numberline {Codigo~9}Filtrado de variables clinicas con alto porcentaje de valores faltantes}{26}{codeblock.9}%
+\contentsline {codeblock}{\numberline {Codigo~10}Resumen del porcentaje de valores faltantes tras el filtrado inicial}{29}{codeblock.10}%
+\contentsline {codeblock}{\numberline {Codigo~11}Eliminacion de variables administrativas y metadatos no relevantes}{31}{codeblock.11}%
+\contentsline {codeblock}{\numberline {Codigo~12}Filtrado de variables clinicas con varianza nula o casi nula}{33}{codeblock.12}%
+\contentsline {codeblock}{\numberline {Codigo~13}Deteccion de variables clinicas exactamente redundantes}{34}{codeblock.13}%
+\contentsline {codeblock}{\numberline {Codigo~14}Eliminacion de variables clinicas redundantes}{36}{codeblock.14}%
+\contentsline {codeblock}{\numberline {Codigo~15}Recodificacion e imputacion dirigida de valores faltantes residuales}{37}{codeblock.15}%
+\contentsline {codeblock}{\numberline {Codigo~16}Calculo de la estadistica descriptiva de las variables categoricas}{39}{codeblock.16}%
+\contentsline {codeblock}{\numberline {Codigo~17}Preparacion de las graficas descriptivas para variables categoricas}{44}{codeblock.17}%
+\contentsline {codeblock}{\numberline {Codigo~18}Representacion grafica de las variables categoricas del conjunto clinico}{47}{codeblock.18}%
+\contentsline {codeblock}{\numberline {Codigo~19}Calculo de la estadistica descriptiva de las variables continuas}{49}{codeblock.19}%
+\contentsline {codeblock}{\numberline {Codigo~20}Preparacion de los diagramas de violin para variables continuas}{51}{codeblock.20}%
+\contentsline {codeblock}{\numberline {Codigo~21}Representacion grafica de las variables continuas del conjunto clinico}{54}{codeblock.21}%
+\contentsline {codeblock}{\numberline {Codigo~22}Comprobacion de normalidad y homocedasticidad de la edad por estadio AJCC}{55}{codeblock.22}%
+\contentsline {codeblock}{\numberline {Codigo~23}Prueba de Kruskal-Wallis para edad al diagnostico segun estadio AJCC}{56}{codeblock.23}%
+\contentsline {codeblock}{\numberline {Codigo~24}Comprobacion de normalidad y homocedasticidad de la edad por grado tumoral}{57}{codeblock.24}%
+\contentsline {codeblock}{\numberline {Codigo~25}Prueba de Kruskal-Wallis para edad al diagnostico segun grado tumoral}{57}{codeblock.25}%
+\contentsline {codeblock}{\numberline {Codigo~26}Tabla de contingencia y prueba chi-cuadrado entre grado tumoral y estadio AJCC}{58}{codeblock.26}%
+\contentsline {codeblock}{\numberline {Codigo~27}Grafico de barras apiladas para la distribucion del grado tumoral por estadio AJCC}{59}{codeblock.27}%
+\contentsline {codeblock}{\numberline {Codigo~28}Calculo de probabilidades condicionadas para enfermedad avanzada y alto grado}{60}{codeblock.28}%
+\contentsline {codeblock}{\numberline {Codigo~29}Curva de Kaplan-Meier para la supervivencia global de la cohorte}{61}{codeblock.29}%
+\contentsline {codeblock}{\numberline {Codigo~30}Curvas de Kaplan-Meier estratificadas por estadio patologico AJCC}{66}{codeblock.30}%
+\contentsline {codeblock}{\numberline {Codigo~31}Ajuste del modelo de Kaplan-Meier segun grado tumoral}{72}{codeblock.31}%
+\contentsline {codeblock}{\numberline {Codigo~32}Curvas de Kaplan-Meier estratificadas por grado tumoral}{77}{codeblock.32}%
+\contentsline {codeblock}{\numberline {Codigo~33}Curvas de Kaplan-Meier estratificadas por grupos de edad al diagnostico}{79}{codeblock.33}%
+\contentsline {codeblock}{\numberline {Codigo~34}Ajuste del modelo de Kaplan-Meier segun sexo biologico}{85}{codeblock.34}%
+\contentsline {codeblock}{\numberline {Codigo~35}Curvas de Kaplan-Meier estratificadas por sexo biologico}{89}{codeblock.35}%
+\contentsline {codeblock}{\numberline {Codigo~36}Ajuste del modelo multivariante de riesgos proporcionales de Cox}{91}{codeblock.36}%
+\contentsline {codeblock}{\numberline {Codigo~37}Simulacion bootstrap de cohortes clinicas segun estadios avanzados}{94}{codeblock.37}%
+\contentsline {codeblock}{\numberline {Codigo~38}Representacion grafica de la simulacion bootstrap de cohortes clinicas}{95}{codeblock.38}%
+\contentsline {codeblock}{\numberline {Codigo~39}Carga e inspeccion inicial del objeto transcriptomico preparado}{97}{codeblock.39}%
+\contentsline {codeblock}{\numberline {Codigo~40}Extraccion de la matriz de conteos crudos desde el objeto transcriptomico}{98}{codeblock.40}%
+\contentsline {codeblock}{\numberline {Codigo~41}Conversion de la matriz de conteos a un data frame para su exploracion}{99}{codeblock.41}%
+\contentsline {codeblock}{\numberline {Codigo~42}Comprobacion de valores faltantes en la matriz de conteos transcriptomicos}{101}{codeblock.42}%
+\contentsline {codeblock}{\numberline {Codigo~43}Conversion de identificadores Ensembl a simbolos genicos oficiales.}{102}{codeblock.43}%
+\contentsline {codeblock}{\numberline {Codigo~44}Comprobacion de los codigos de tipo de muestra en TCGA-KIRC}{104}{codeblock.44}%
+\contentsline {codeblock}{\numberline {Codigo~45}Clasificacion de las muestras transcriptomicas segun el tipo de tejido}{105}{codeblock.45}%
+\contentsline {codeblock}{\numberline {Codigo~46}Analisis de componentes principales sobre los datos transcriptomicos transformados}{109}{codeblock.46}%
+\contentsline {codeblock}{\numberline {Codigo~47}Analisis de expresion diferencial entre muestras tumorales y normales}{111}{codeblock.47}%
