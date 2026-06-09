@@ -1,5 +1,5 @@
 ---
-title: "Implementación de una estrategia bioinformática aplicada al carcinoma renal de células claras"
+title: "Aplicación de herramientas bioinformáticas al estudio del carcinoma renal de células claras"
 author: "Dra. Marta Barea Sepúlveda"
 date: "18 de junio de 2026"
 output:
@@ -54,7 +54,186 @@ knitr::opts_chunk$set(
   size = "scriptsize"
 )
 options(width = 72)
+
+default_chunk_hook <- knitr::knit_hooks$get("chunk")
+
+if (is.null(default_chunk_hook)) {
+  default_chunk_hook <- function(x, options) x
+}
+
+escape_latex_code_text <- function(text) {
+  text <- gsub("\\\\", "\\\\textbackslash{}", text)
+  text <- gsub("([#$%&_{}])", "\\\\\\1", text)
+  text <- gsub("~", "\\\\textasciitilde{}", text)
+  text <- gsub("\\^", "\\\\textasciicircum{}", text)
+  text
+}
+
+strip_trailing_code_period <- function(text) {
+  sub("[[:space:]]*\\.+$", "", text)
+}
+
+code_titles <- c(
+  "gdc-exploration-code" = "Exploracion inicial del proyecto TCGA-KIRC en el portal GDC.",
+  "download-script-command" = "Comando de ejecucion del script de descarga y preparacion de datos.",
+  "download-script-preview" = "Contenido del script de descarga y preparacion de datos TCGA-KIRC.",
+  "data-directory-summary-code" = "Resumen estructural del directorio de datos del proyecto.",
+  "clinical-data-glimpse-code" = "Inspeccion inicial del conjunto de datos clinicos preparado.",
+  "missingness-heatmap-theme" = "Definicion del tema grafico del mapa de calor de valores faltantes.",
+  "missingness-heatmap-code" = "Construccion de los datos y del grafico base del mapa de calor de valores faltantes.",
+  "missingness-heatmap-figure" = "Representacion del mapa de calor de valores faltantes del conjunto clinico.",
+  "missingness-treatment-code" = "Filtrado de variables clinicas con alto porcentaje de valores faltantes.",
+  "missingness-summary-code" = "Resumen del porcentaje de valores faltantes tras el filtrado inicial.",
+  "administrative-filtering-code" = "Eliminacion de variables administrativas y metadatos no relevantes.",
+  "low-variance-filtering-code" = "Filtrado de variables clinicas con varianza nula o casi nula.",
+  "redundant-vars-code" = "Deteccion de variables clinicas exactamente redundantes.",
+  "redundant-filtering-code" = "Eliminacion de variables clinicas redundantes.",
+  "missing-data-treatment-code" = "Recodificacion e imputacion dirigida de valores faltantes residuales.",
+  "categorical-descriptive-statistics" = "Calculo de la estadistica descriptiva de las variables categoricas.",
+  "categorical-descriptive-plots-setup" = "Preparacion de las graficas descriptivas para variables categoricas.",
+  "categorical-descriptive-plot" = "Representacion grafica de las variables categoricas del conjunto clinico.",
+  "continuous-descriptive-statistics" = "Calculo de la estadistica descriptiva de las variables continuas.",
+  "continuous-descriptive-plots" = "Preparacion de los diagramas de violin para variables continuas.",
+  "continuous-descriptive-plots-figure" = "Representacion grafica de las variables continuas del conjunto clinico.",
+  "age-ajcc-assumptions-normality-homogeneity" = "Comprobacion de normalidad y homocedasticidad de la edad por estadio AJCC.",
+  "age-ajcc-kruskal-wallis" = "Prueba de Kruskal-Wallis para edad al diagnostico segun estadio AJCC.",
+  "age-tumor-grade-assumptions-normality-homogeneity" = "Comprobacion de normalidad y homocedasticidad de la edad por grado tumoral.",
+  "age-tumor-grade-kruskal-wallis" = "Prueba de Kruskal-Wallis para edad al diagnostico segun grado tumoral.",
+  "grade-ajcc-contingency-table-chi-squared" = "Tabla de contingencia y prueba chi-cuadrado entre grado tumoral y estadio AJCC.",
+  "grade-ajcc-stacked-bar-plot" = "Grafico de barras apiladas para la distribucion del grado tumoral por estadio AJCC.",
+  "grade-ajcc-conditional-probabilities" = "Calculo de probabilidades condicionadas para enfermedad avanzada y alto grado.",
+  "global-kaplan-meier-curve" = "Curva de Kaplan-Meier para la supervivencia global de la cohorte.",
+  "ajcc-kaplan-meier-curve" = "Curvas de Kaplan-Meier estratificadas por estadio patologico AJCC.",
+  "grade-kaplan-meier-curve" = "Ajuste del modelo de Kaplan-Meier segun grado tumoral.",
+  "tumor-grade-kaplan-meier-curve-plot" = "Curvas de Kaplan-Meier estratificadas por grado tumoral.",
+  "age-kaplan-meier-curve" = "Curvas de Kaplan-Meier estratificadas por grupos de edad al diagnostico.",
+  "sex-kaplan-meier-curve" = "Ajuste del modelo de Kaplan-Meier segun sexo biologico.",
+  "sex-kaplan-meier-curve-plot" = "Curvas de Kaplan-Meier estratificadas por sexo biologico.",
+  "cox-multivariate-analysis" = "Ajuste del modelo multivariante de riesgos proporcionales de Cox.",
+  "simulation-code" = "Simulacion bootstrap de cohortes clinicas segun estadios avanzados.",
+  "simulation-code-plot" = "Representacion grafica de la simulacion bootstrap de cohortes clinicas.",
+  "inspect-transcriptomic-object" = "Carga e inspeccion inicial del objeto transcriptomico preparado.",
+  "extract-count-matrix" = "Extraccion de la matriz de conteos crudos desde el objeto transcriptomico.",
+  "create-counts-dataframe" = "Conversion de la matriz de conteos a un data frame para su exploracion.",
+  "check-missing-values" = "Comprobacion de valores faltantes en la matriz de conteos transcriptomicos.",
+  "convert-gene-identifiers" = "Conversion de identificadores Ensembl a simbolos genicos oficiales.",
+  "check-sample-types" = "Comprobacion de los codigos de tipo de muestra en TCGA-KIRC.",
+  "classify-sample-tissue-type" = "Clasificacion de las muestras transcriptomicas segun el tipo de tejido.",
+  "create-deseq2-object" = "Construccion del objeto DESeqDataSet para el analisis diferencial.",
+  "filter-low-expression-genes" = "Filtrado de genes con baja expresion antes del analisis diferencial.",
+  "normalize-count-data" = "Normalizacion de conteos y ajuste del modelo estadistico con DESeq2.",
+  "apply-vst-transformation" = "Aplicacion de la transformacion estabilizadora de la varianza.",
+  "pca-analysis" = "Analisis de componentes principales sobre los datos transcriptomicos transformados.",
+  "differential-expression-analysis" = "Analisis de expresion diferencial entre muestras tumorales y normales."
+)
+
+derive_code_title <- function(options) {
+  if (!is.null(options$code_title) && nzchar(options$code_title)) {
+    return(strip_trailing_code_period(options$code_title))
+  }
+
+  if (isFALSE(options$echo)) {
+    return(NULL)
+  }
+
+  if (!is.null(options$label) && nzchar(options$label)) {
+    if (options$label %in% names(code_titles)) {
+      return(strip_trailing_code_period(unname(code_titles[[options$label]])))
+    }
+
+    label_text <- gsub("[-_]+", " ", options$label)
+    label_text <- tools::toTitleCase(label_text)
+    return(strip_trailing_code_period(label_text))
+  }
+
+  NULL
+}
+
+knitr::knit_hooks$set(chunk = function(x, options) {
+  rendered_chunk <- default_chunk_hook(x, options)
+
+  if (!knitr::is_latex_output()) {
+    return(rendered_chunk)
+  }
+
+  code_title <- derive_code_title(options)
+
+  if (is.null(code_title) || !nzchar(code_title)) {
+    return(rendered_chunk)
+  }
+
+  code_label <- ""
+
+  if (!is.null(options$label) && nzchar(options$label)) {
+    code_label <- paste0("[code:", options$label, "]")
+  }
+
+  paste0(
+    "\n\\codecaption",
+    code_label,
+    "{",
+    escape_latex_code_text(code_title),
+    "}\n",
+    rendered_chunk,
+    "\n"
+  )
+})
 ```
+
+```{=latex}
+\clearpage
+\phantomsection
+\addcontentsline{toc}{section}{Índice de figuras}
+\renewcommand{\listfigurename}{Índice de figuras}
+\listoffigures
+\clearpage
+
+\phantomsection
+\addcontentsline{toc}{section}{Índice de tablas}
+\renewcommand{\listtablename}{Índice de tablas}
+\listoftables
+\clearpage
+
+\phantomsection
+\addcontentsline{toc}{section}{Indice de codigos}
+\listofcodes
+```
+
+```{=latex}
+\clearpage
+\phantomsection
+\section*{Lista de abreviaturas}
+\addcontentsline{toc}{section}{Lista de abreviaturas}
+```
+
+| Abreviatura | Significado |
+|:--|:--|
+| AJCC | American Joint Committee on Cancer |
+| ANOVA | Analysis of Variance |
+| ccRCC | Clear cell renal cell carcinoma |
+| CRAN | Comprehensive R Archive Network |
+| DESeq2 | Differential gene expression analysis based on the negative binomial distribution |
+| DNA | Deoxyribonucleic acid |
+| GDC | Genomic Data Commons |
+| HIF | Hypoxia-inducible factor |
+| HR | Hazard Ratio |
+| IC95% | Intervalo de confianza del 95 % |
+| IQR | Interquartile Range |
+| KIRC | Kidney Renal Clear Cell Carcinoma |
+| NA | Valor ausente o dato no disponible |
+| NCI | National Cancer Institute |
+| PCA | Principal Component Analysis |
+| PEC | Prueba de Evaluación Continua |
+| RCC | Renal cell carcinoma |
+| RNA-Seq | RNA sequencing |
+| STAR | Spliced Transcripts Alignment to a Reference |
+| TCGA | The Cancer Genome Atlas |
+| UB | Universitat de Barcelona |
+| UOC | Universitat Oberta de Catalunya |
+| VHL | Von Hippel-Lindau |
+| VST | Variance Stabilizing Transformation |
+
+\newpage
 
 # Introducción
 
@@ -70,7 +249,7 @@ Asimismo, esta memoria pone especial énfasis en el desarrollo de un flujo de tr
 
 # Estado del Arte
 
-## Bases biológicas y relevancia cínica del cáncer
+## Bases biológicas y relevancia clínica del cáncer
 
 El cáncer engloba un amplio conjunto de enfermedades caracterizadas por el crecimiento descontrolado de células que han acumulado alteraciones genéticas y moleculares a lo largo del tiempo. Estas alteraciones permiten que las células escapen a los mecanismos que regulan normalmente su proliferación, supervivencia y diferenciación, favoreciendo la formación de tumores capaces de invadir tejidos próximos y, en fases avanzadas, diseminarse a otros órganos mediante procesos de metástasis. Lejos de tratarse de una única enfermedad, el cáncer comprende múltiples patologías con comportamientos biológicos muy diversos, lo que explica la dificultad de su diagnóstico, tratamiento y seguimiento clínico.
 
@@ -80,7 +259,18 @@ Durante las últimas décadas, el estudio de la biología tumoral ha permitido i
 
 Dentro de este grupo de enfermedades, el cáncer renal constituye una de las neoplasias urológicas más relevantes tanto por su impacto clínico como por la complejidad biológica que presenta. La mayoría de los tumores renales se originan en el epitelio tubular del riñón y se clasifican dentro del grupo de los carcinomas de células renales (*renal cell carcinoma*, RCC), responsables de aproximadamente el 90 % de las neoplasias malignas de este órgano. El RCC engloba distintos subtipos histológicos con características clínicas, moleculares y pronósticas diferenciadas, reflejando la gran heterogeneidad que caracteriza a esta enfermedad.
 
-Entre estos subtipos, el carcinoma renal de células claras (*clear cell renal cell carcinoma*, ccRCC) es el más frecuente, representando alrededor del 70–80 % de todos los casos de RCC. Su denominación proviene del aspecto característico de las células tumorales, cuyo citoplasma presenta una apariencia clara debido a la acumulación intracelular de lípidos y glucógeno. Desde el punto de vista molecular, uno de los eventos más relevantes asociados al desarrollo de este tumor es la inactivación del gen *von Hippel–Lindau* (*VHL*), una alteración que favorece la estabilización de factores inducibles por hipoxia (*hypoxia-inducible factors*, HIF) y la activación de procesos relacionados con la angiogénesis, el metabolismo celular y la adaptación al microambiente tumoral. Sin embargo, el ccRCC es una enfermedad mucho más compleja que la simple pérdida de función de *VHL*, ya que en su desarrollo intervienen numerosas alteraciones genéticas, epigenéticas y transcriptómicas que contribuyen a su marcada heterogeneidad clínica y biológica.
+```{=latex}
+\begin{wrapfigure}{r}{0.36\textwidth}
+\centering
+\vspace{-1.0\baselineskip}
+\includegraphics[width=0.34\textwidth]{../assets/images/Clear_cell_renal_cell_carcinoma_high_mag.jpg}
+\caption{Micrografía del subtipo más común de carcinoma de células renales (células claras), situada a la derecha de la imagen; el tejido renal no tumoral se observa a la izquierda \cite{wikipedia_renal_cell_carcinoma}.}
+\label{fig:ccrcc-histology-image}
+\vspace{-0.4\baselineskip}
+\end{wrapfigure}
+```
+
+Entre estos subtipos, el carcinoma renal de células claras (*clear cell renal cell carcinoma*, ccRCC) es el más frecuente, representando alrededor del 70–80 % de todos los casos de RCC. Su denominación proviene del aspecto característico de las células tumorales, cuyo citoplasma presenta una apariencia clara debido a la acumulación intracelular de lípidos y glucógeno, como puede apreciarse en la Figura \ref{fig:ccrcc-histology-image}. Desde el punto de vista molecular, uno de los eventos más relevantes asociados al desarrollo de este tumor es la inactivación del gen *von Hippel–Lindau* (*VHL*), una alteración que favorece la estabilización de factores inducibles por hipoxia (*hypoxia-inducible factors*, HIF) y la activación de procesos relacionados con la angiogénesis, el metabolismo celular y la adaptación al microambiente tumoral. Sin embargo, el ccRCC es una enfermedad mucho más compleja que la simple pérdida de función de *VHL*, ya que en su desarrollo intervienen numerosas alteraciones genéticas, epigenéticas y transcriptómicas que contribuyen a su marcada heterogeneidad clínica y biológica.
 
 ## Caracterización molecular del ccRCC y el proyecto TCGA
 
@@ -115,6 +305,136 @@ Aplicar técnicas bioinformáticas al análisis de datos clínicos y transcript�
 \newpage
 
 # Materiales y Métodos
+
+## Entorno computacional y software utilizado
+
+Todos los análisis y visualizaciones de este trabajo se realizaron en el entorno estadístico **R** versión **`r getRversion()`** (*`r R.version.string`*), sobre la plataforma **`r R.version$platform`**. El desarrollo del flujo de trabajo, la edición del código y la compilación del informe se llevaron a cabo en **RStudio 2026.05.0+218 "Golden Wattle" Release**, para macOS, con **Quarto 1.9.37** integrado en dicho entorno.
+
+El análisis combinó paquetes de **CRAN** y **Bioconductor** orientados a la adquisición de datos, manipulación de estructuras transcriptómicas, análisis estadístico, visualización y análisis de expresión diferencial. La Tabla \ref{tab:software-packages} resume las principales bibliotecas empleadas y sus versiones, obtenidas directamente desde la sesión de R mediante `packageVersion()` y detectadas automáticamente a partir de las llamadas a `library()` y `require()` presentes en este documento.
+
+```{r software-environment-packages, echo=FALSE, results='asis'}
+input_candidates <- c(knitr::current_input(), knitr::opts_knit$get("input.dir"))
+input_candidates <- input_candidates[nzchar(input_candidates)]
+
+resolve_input_path <- function(path_candidates) {
+  for (candidate in path_candidates) {
+    if (file.exists(candidate)) {
+      return(normalizePath(candidate, winslash = "/", mustWork = TRUE))
+    }
+
+    if (file.exists(file.path(getwd(), candidate))) {
+      return(normalizePath(file.path(getwd(), candidate), winslash = "/", mustWork = TRUE))
+    }
+  }
+
+  stop("No se pudo localizar el archivo Rmd actual para detectar los paquetes usados.")
+}
+
+input_path <- resolve_input_path(input_candidates)
+rmd_lines <- readLines(input_path, warn = FALSE)
+
+library_calls <- regmatches(
+  rmd_lines,
+  gregexpr("(?:library|require)\\s*\\(\\s*[[:alnum:].]+", rmd_lines, perl = TRUE)
+)
+
+software_package_names <- unique(unlist(lapply(library_calls, function(matches) {
+  if (length(matches) == 0) {
+    return(character(0))
+  }
+
+  sub("(?:library|require)\\s*\\(\\s*", "", matches, perl = TRUE)
+})))
+
+software_package_names <- software_package_names[nzchar(software_package_names)]
+
+software_packages <- data.frame(
+  paquete = software_package_names,
+  version = vapply(
+    software_package_names,
+    function(pkg) as.character(utils::packageVersion(pkg)),
+    character(1)
+  ),
+  stringsAsFactors = FALSE
+)
+
+software_packages_latex <- knitr::kable(
+  software_packages,
+  format = "latex",
+  booktabs = TRUE,
+  align = c("l", "c")
+)
+
+cat("\\begin{table}[!htbp]\n")
+cat("\\centering\n")
+cat("\\caption{Principales paquetes utilizados en el flujo de trabajo y sus versiones instaladas.}\n")
+cat("\\label{tab:software-packages}\n")
+cat(software_packages_latex)
+cat("\n\\end{table}\n")
+cat("\\FloatBarrier\n")
+```
+
+## Estrategia bioinformática seguida
+
+El flujo de trabajo bioinformático se estructuró como una secuencia de etapas orientadas a garantizar la reproducibilidad del análisis y la integración coherente de la información clínica y transcriptómica. En primer lugar, se localizaron y descargaron los datos del proyecto TCGA-KIRC desde el portal GDC, seleccionando tanto la información clínica de los pacientes como los recuentos génicos obtenidos mediante RNA-seq con el flujo **STAR - Counts**. Posteriormente, los datos se organizaron y prepararon en objetos estructurados para su análisis en R.
+
+En una segunda fase, se llevó a cabo el preprocesamiento del conjunto clínico, incluyendo exploración inicial, evaluación de valores faltantes, eliminación de variables poco informativas, recodificación de covariables y construcción de variables derivadas para supervivencia. A continuación, se realizó la caracterización estadística de la cohorte mediante análisis descriptivos, contrastes de hipótesis y modelos de supervivencia, con el fin de identificar asociaciones entre variables clinicopatológicas y evolución clínica.
+
+Por último, se abordó el análisis transcriptómico. Para ello, se inspeccionó la matriz de conteos, se anotaron los genes, se clasificaron las muestras según tipo de tejido y se aplicaron etapas estándar de filtrado, normalización y transformación de la varianza mediante **DESeq2**. Sobre estos datos procesados se realizaron análisis exploratorios, como PCA, y un análisis de expresión diferencial entre tejido tumoral y normal. En conjunto, esta estrategia permitió integrar ambas fuentes de información y obtener una visión global de la cohorte TCGA-KIRC desde una perspectiva bioinformática.
+
+De forma resumida, el pipeline seguido puede organizarse en las fases descritas en la Tabla \ref{tab:bioinformatics-workflow}, que sintetiza la lógica general del análisis desde la adquisición de datos hasta la integración final de resultados.
+
+```{r bioinformatics-workflow-table, echo=FALSE, results='asis'}
+library(kableExtra)
+
+bioinformatics_workflow <- data.frame(
+  fase = c(
+    "Adquisición y organización de datos",
+    "Preparación del conjunto clínico",
+    "Análisis clínico y de supervivencia",
+    "Preparación del conjunto transcriptómico",
+    "Análisis transcriptómico",
+    "Integración e interpretación"
+  ),
+  descripcion = c(
+    "Consulta del proyecto TCGA-KIRC en GDC, descarga de datos clínicos y transcriptómicos, y estructuración de los archivos generados en el proyecto.",
+    "Exploración inicial, evaluación de valores faltantes, filtrado de variables poco informativas, recodificación de covariables y construcción de variables de supervivencia.",
+    "Obtención de estadística descriptiva, evaluación de asociaciones clinicopatológicas, análisis de Kaplan-Meier y ajuste de un modelo multivariante de Cox.",
+    "Inspección de la matriz de conteos, anotación génica, clasificación de muestras por tipo de tejido y construcción del objeto preparado para el análisis diferencial.",
+    "Filtrado de genes con baja expresión, normalización con DESeq2, transformación VST, análisis exploratorio mediante PCA y análisis de expresión diferencial entre tumor y tejido normal.",
+    "Interpretación conjunta de los hallazgos clínicos y transcriptómicos para caracterizar la cohorte y contextualizar los resultados en el marco biológico del ccRCC."
+  ),
+  stringsAsFactors = FALSE
+)
+
+bioinformatics_workflow_latex <- knitr::kable(
+  bioinformatics_workflow,
+  format = "latex",
+  caption = "Resumen del pipeline bioinformático seguido en el análisis de la cohorte TCGA-KIRC.",
+  booktabs = TRUE,
+  linesep = "",
+  col.names = c("Fase", "Descripción"),
+  align = c("l", "l")
+) %>%
+  kable_styling(
+    latex_options = c("hold_position", "striped"),
+    stripe_color = "gray!10",
+    font_size = 9,
+    position = "center"
+  ) %>%
+  row_spec(0, bold = TRUE, background = "gray!20") %>%
+  column_spec(1, width = "4.2cm", bold = TRUE) %>%
+  column_spec(2, width = "9.6cm")
+
+bioinformatics_workflow_latex <- sub(
+  "(\\\\caption\\{[^}]*\\})",
+  "\\1\n\\\\label{tab:bioinformatics-workflow}",
+  bioinformatics_workflow_latex
+)
+
+cat(bioinformatics_workflow_latex)
+cat("\\FloatBarrier\n")
+```
 
 \newpage
 
@@ -224,13 +544,13 @@ La parte de descarga y preparación del objeto se trasladó a un script externo,
 
 En este sentido, el script se ejecuta una única vez desde la raíz del proyecto con el siguiente comando:
 
-```{r, eval=FALSE}
+```{r download-script-command, eval=FALSE}
 system("Rscript scripts/download_tcga_kirc_data.R")
 ```
 
 A continuación se muestra el contenido del script. Se incluye aquí únicamente con fines documentales, pero no se ejecuta dentro del propio RMarkdown para evitar, como se ha mencionado anteriromente, que el renderizado del informe vuelva a iniciar la descarga.
 
-```{r, echo=FALSE, results='asis'}
+```{r download-script-preview, echo=FALSE, results='asis', code_title="Contenido del script de descarga y preparacion de datos TCGA-KIRC."}
 # Mostrar el contenido del script de descarga
 script_candidates <- c(
   "../scripts/download_tcga_kirc_data.R",
@@ -437,16 +757,18 @@ missingness_plot <- ggplot(missingness_heatmap_data, aes(observation, variable, 
   missingness_heatmap_theme
 ```
 
-```{r missingness-heatmap-figure, fig.cap="Patrón de valores faltantes en las variables clínicas del conjunto TCGA-KIRC. La leyenda indica el porcentaje total de valores presentes y faltantes.", fig.align='center', fig.width=8.2, fig.height=12.1, out.width='90%', out.height='0.92\\textheight', fig.pos='!htbp', dev='png', dpi=400}
+\newpage
+
+```{r missingness-heatmap-figure, fig.cap="Patrón de valores faltantes en las variables clínicas del conjunto TCGA-KIRC. La leyenda indica el porcentaje total de valores presentes y faltantes.", fig.align='center', fig.width=8.2, fig.height=12.1, out.width='90%', out.height='0.80\\textheight', fig.pos='!htbp', dev='png', dpi=400}
 # Mostrar el heatmap de valores faltantes
 missingness_plot
 ```
 
 A la vista de los resultados observados en el *heatmap* de la Figura \ref{fig:missingness-heatmap-figure}, es posible determinar que existen variables que presentan una proporción muy elevada de valores ausentes, alcanzando incluso el 100 \% en algunos casos. Este comportamiento es consistente con la estructura del esquema clínico del GDC, que contempla un amplio conjunto de variables potenciales para la caracterización clínica de los pacientes. Sin embargo, la disponibilidad de esta información no es homogénea entre todos los individuos ni entre los distintos proyectos integrados en TCGA. Concretamente, en la cohorte TCGA-KIRC, los valores faltantes se concentraron principalmente en variables relacionadas con tratamientos, seguimiento clínico y antecedentes del paciente.
 
-\FloatBarrier
-
 Por ello, antes de realizar análisis posteriores, es necesario establecer una estrategia de tratamiento de datos faltantes, incluyendo la eliminación de variables con un porcentaje extremo de ausencia y la conservación de aquellas con relevancia clínica directa para los análisis posteriores.
+
+\FloatBarrier
 
 ### Peparación de los datos clínicos
 
@@ -871,6 +1193,7 @@ categorical_table_latex <- kable(
     font_size = 9,
     repeat_header_text = ""
   ) %>%
+  row_spec(0, bold = TRUE, align = "c") %>%
   column_spec(1, width = "2.7cm") %>%
   column_spec(2, width = "2.7cm") %>%
   column_spec(3, width = "3.4cm") %>%
@@ -1039,6 +1362,8 @@ La figura también permite apreciar qué variables mantienen distribuciones muy 
 
 En general, este patrón descriptivo es coherente con las características clínicas de la cohorte estudiada y confirma que el conjunto de variables seleccionado es adecuado para realizar los análisis posteriores. Las variables conservadas presentan un nivel de completitud aceptable y, además, incluyen información relevante sobre la enfermedad, como la extensión del tumor, el grado de agresividad histológica, el estado vital de los pacientes y diversos factores demográficos y clínicos. 
 
+\newpage
+
 ##### Variables continuas
 
 En el caso de las variables continuas, se resumieron en una única tabla, presentada como Tabla \ref{tab:continuous-descriptive-statistics}, que incluye la media, la mediana, el rango intercuartílico (IQR) y el rango total (mínimo-máximo) de cada variable.
@@ -1100,7 +1425,12 @@ continuous_table_latex <- kable(
     "y rango total (mínimo-máximo) de cada variable."
   ),
   col.names = c(
-    "Variable", "Media", "Mediana", "IQR", "Mínimo", "Máximo"
+    "Variable",
+    "Media",
+    "Mediana",
+    "IQR",
+    "Mínimo",
+    "Máximo"
   ),
   align = c("l", "c", "c", "c", "c", "c")
 ) %>%
@@ -1109,6 +1439,7 @@ continuous_table_latex <- kable(
     font_size = 9,
     repeat_header_text = ""
   ) %>%
+  row_spec(0, bold = TRUE, align = "c") %>%
   column_spec(1, width = "3.8cm") %>%
   column_spec(2:6, width = "1.8cm")
 
@@ -1153,6 +1484,8 @@ violin_theme <- theme_bw(base_size = 11) +
       face = "bold",
       size = 10
     ),
+    axis.title = element_text(size = 8),
+    axis.text = element_text(size = 8),
     panel.grid.major.y =
       element_line(colour = "grey90", linewidth = 0.25),
     panel.grid.major.x = element_blank(),
@@ -1251,18 +1584,17 @@ p3 <- continuous_plot_data %>%
   violin_theme
 ```
               
+```{r continuous-descriptive-plots-figure, fig.width=6.8, fig.height=5.8, fig.align='center', out.width='90%', fig.pos='H', fig.cap='Distribución de las variables continuas del conjunto de datos clínico TCGA-KIRC representada mediante diagrama de violín.'}
+# Figura combinada
+(p1 | p2) /
+(p3 | patchwork::plot_spacer())
+```
 
 Los diagramas de violín de la Figura \ref{fig:continuous-descriptive-plots-figure} ofrecen una visión directa de la forma y la dispersión de las principales variables continuas de la cohorte TCGA-KIRC. En ellos se aprecia que `age_at_diagnosis`, expresada en años, se concentra en torno a valores intermedios, mientras que `year_of_diagnosis` reúne la mayor densidad de observaciones entre 2004 y 2007, en consonancia con el periodo en el que se registró la mayor parte de los casos incluidos en el estudio.
 
 En cambio, la variable `survival_time`, expresada en meses, presenta una mayor amplitud y una distribución asimétrica, lo que pone de manifiesto la heterogeneidad del tiempo observado hasta el evento o la censura entre pacientes. También se identifican algunos valores atípicos asociados a casos con periodos de observación o supervivencia notablemente más prolongados que los del resto de la cohorte. 
 
 En conjunto, estas gráficas permiten comprobar que las variables continuas del conjunto clínico no siguen un único patrón de distribución. Mientras algunas, como `age_at_diagnosis`, presentan una dispersión más contenida, otras, como `survival_time`, muestran una variabilidad mucho mayor entre pacientes. Esta diferencia resulta útil como referencia para los análisis posteriores, ya que ayuda a contextualizar mejor la heterogeneidad clínica presente en la cohorte TCGA-KIRC.
-
-```{r continuous-descriptive-plots-figure, fig.width=6.5, fig.height=5.5, fig.align='center', out.width='90%', fig.pos='H', fig.cap='Distribución de las variables continuas del conjunto de datos clínico TCGA-KIRC representada mediante diagrama de violín.'}
-# Figura combinada
-(p1 | p2) /
-(p3 | patchwork::plot_spacer())
-```
 
 
 #### Asociación entre la edad al diagnóstico y las características clinicopatológicas
@@ -1422,7 +1754,7 @@ Los resultados mostraron que el 56.84 % de los pacientes con tumores de alto gra
 
 Con el fin de explorar la supervivencia global de la cohorte, se construyó una curva de Kaplan-Meier utilizando las variables `survival_time` y `death_event`. Esta curva permite visualizar la probabilidad de supervivencia a lo largo del tiempo y proporciona una estimación de la mediana de supervivencia, así como de los intervalos de confianza asociados.
 
-```{r global-kaplan-meier-curve, fig.width=7.5, fig.height=4.2, fig.align='center', out.width='90%', fig.pos='H', fig.cap='Curva de Kaplan-Meier que muestra la supervivencia global de la cohorte TCGA-KIRC.'}
+```{r global-kaplan-meier-curve, fig.width=7.5, fig.height=5.5, fig.align='center', out.width='90%', fig.pos='H', fig.cap='Curva de Kaplan-Meier que muestra la supervivencia global de la cohorte TCGA-KIRC.'}
 # Cargar librerías necesarias
 library(survival)
 library(survminer)
@@ -1458,7 +1790,7 @@ En conjunto, la cohorte TCGA-KIRC presenta una supervivencia global relativament
 
 Tras analizar la supervivencia global de la cohorte, se procedió a evaluar la supervivencia según el estadio patológico AJCC (`ajcc_pathologic_stage`),uno de los principales factores pronósticos en oncología y ampliamente utilizado para estimar la extensión de la enfermedad y el pronóstico de los pacientes. Para ello, se construyeron curvas de Kaplan-Meier estratificadas por estadio AJCC (estadios I–IV), incluyendo intervalos de confianza del 95 % y tablas de riesgo. Las diferencias en supervivencia entre los distintos estadios se evaluaron mediante la prueba de log-rank.
 
-```{r ajcc-kaplan-meier-curve, fig.width=7.5, fig.height=8.2, fig.align='center', out.width='90%', fig.pos='H', fig.cap='Curvas de Kaplan-Meier estratificadas por estadio patológico AJCC, con intervalos de confianza y tabla de riesgo.'}
+```{r ajcc-kaplan-meier-curve, fig.width=7.5, fig.height=6.2, fig.align='center', out.width='90%', fig.pos='H', fig.cap='Curvas de Kaplan-Meier estratificadas por estadio patológico AJCC, con intervalos de confianza y tabla de riesgo.'}
 # Cargar librerías necesarias
 library(survival)
 library(viridis)
@@ -1550,7 +1882,7 @@ Aunque los pacientes clasificados como G1 mantuvieron una supervivencia del 100 
 
 En conjunto, estos resultados indican que un mayor grado tumoral se asocia con una menor supervivencia global y un peor pronóstico clínico, reforzando el valor del grado histológico como uno de los principales factores pronósticos en esta cohorte.
 
-```{r tumor-grade-kaplan-meier-curve-plot, fig.width=7.5, fig.height=8.2, fig.align='center', out.width='90%', fig.pos='H', fig.cap='Curvas de Kaplan-Meier estratificadas por grado tumoral, con intervalos de confianza y tabla de riesgo.'}
+```{r tumor-grade-kaplan-meier-curve-plot, fig.width=7.5, fig.height=6.2, fig.align='center', out.width='90%', fig.pos='H', fig.cap='Curvas de Kaplan-Meier estratificadas por grado tumoral, con intervalos de confianza y tabla de riesgo.'}
 
 # Paleta de colores personalizada para los grados tumorales
 grade_colors <- c(
@@ -1586,7 +1918,7 @@ ggsurvplot(fit_grade_km,
 
 La edad al diagnóstico (`age_at_diagnosis`) constituye uno de los factores pronósticos más relevantes en numerosos tipos de cáncer, ya que puede influir tanto en la evolución de la enfermedad como en la respuesta al tratamiento. Por ello, se evaluó su impacto sobre la supervivencia global mediante curvas de Kaplan-Meier estratificadas por grupos de edad. Los pacientes se clasificaron en tres categorías: menores de 50 años, entre 50 y 70 años y mayores de 70 años. Las curvas se representaron junto con sus intervalos de confianza del 95 % y las correspondientes tablas de riesgo. Las diferencias en supervivencia entre los distintos grupos de edad se evaluaron mediante la prueba de log-rank.
 
-```{r age-kaplan-meier-curve, fig.width=7.5, fig.height=8.2, fig.align='center', out.width='90%', fig.pos='H', fig.cap='Curvas de Kaplan-Meier estratificadas por grupos de edad al diagnóstico, con intervalos de confianza y tabla de riesgo.'}
+```{r age-kaplan-meier-curve, fig.width=7.5, fig.height=6.2, fig.align='center', out.width='90%', fig.pos='H', fig.cap='Curvas de Kaplan-Meier estratificadas por grupos de edad al diagnóstico, con intervalos de confianza y tabla de riesgo.'}
 # Cargar librerías necesarias
 library(survival)
 library(survminer)
@@ -1686,21 +2018,14 @@ start_sex <- which(summary_km_sex == "")[1]
 cat(paste(summary_km_sex[(start_sex + 1):length(summary_km_sex)], collapse = "\n"))
 ```
 
-La Figura \ref{fig:sex-kaplan-meier-curve-plot} muestra las curvas de Kaplan-Meier estratificadas por sexo. No se observaron diferencias relevantes en la supervivencia global entre hombres y mujeres, ya que ambas curvas presentaron trayectorias muy similares a lo largo de todo el periodo de seguimiento. Además, los intervalos de confianza mostraron un amplio solapamiento entre ambos grupos, lo que respalda la ausencia de diferencias evidentes en la probabilidad de supervivencia.
 
-Las curvas permanecieron próximas durante prácticamente todo el seguimiento, sin apreciarse una separación sostenida entre ambos grupos. Del mismo modo, la evolución temporal de la supervivencia fue comparable en hombres y mujeres, observándose descensos de magnitud similar y manteniéndose probabilidades de supervivencia cercanas durante la mayor parte del periodo de observación. Aunque pueden apreciarse pequeñas variaciones puntuales entre las curvas en determinados momentos del seguimiento, estas no siguieron un patrón consistente ni sugieren diferencias clínicamente relevantes entre ambos grupos.
-
-Asimismo, la tabla de riesgo mostró una disminución gradual del número de pacientes en seguimiento en ambos sexos a medida que avanzaba el tiempo de observación, manteniéndose una distribución relativamente equilibrada entre grupos durante gran parte del estudio. Esta circunstancia contribuye a reforzar la robustez de la comparación realizada y reduce la probabilidad de que las pequeñas diferencias observadas se deban a desequilibrios importantes en el tamaño de los grupos.
-
-Este resultado fue confirmado mediante la prueba de log-rank, que no detectó diferencias estadísticamente significativas entre hombres y mujeres (*p* = 0,75). En conjunto, estos hallazgos indican que, en esta cohorte, el sexo no se asoció de forma significativa con la supervivencia global cuando se analizó de manera individual. Por tanto, su influencia sobre el pronóstico parece limitada en comparación con otras variables clínicas y patológicas evaluadas en el estudio, las cuales mostraron una mayor capacidad para discriminar entre grupos con diferente evolución clínica.
-
-```{r sex-kaplan-meier-curve-plot, fig.width=7.5, fig.height=8.2, fig.align='center', out.width='90%', fig.pos='H', fig.cap='Curvas de Kaplan-Meier estratificadas por sexo, con intervalos de confianza y tabla de riesgo.'}
+```{r sex-kaplan-meier-curve-plot, fig.width=7.5, fig.height=6.2, fig.align='center', out.width='90%', fig.pos='H', fig.cap='Curvas de Kaplan-Meier estratificadas por sexo, con intervalos de confianza y tabla de riesgo.'}
 # Representar la curva de Kaplan-Meier
 ggsurvplot(fit_sex_km,
            data = clinical_data_sex, 
            conf.int = TRUE,
            conf.int.alpha = 0.2,
-           palette = viridis(2),
+           palette = viridis(9, option = "D")[c(2, 7)],
            ggtheme = theme_minimal(base_size = 11),
            title = "",
            xlab = "Tiempo (meses)", 
@@ -1715,6 +2040,15 @@ ggsurvplot(fit_sex_km,
            pval.method.size = 4.5,
            legend.title = "Grupo de sexo")
 ```
+
+La Figura \ref{fig:sex-kaplan-meier-curve-plot} muestra las curvas de Kaplan-Meier estratificadas por sexo. No se observaron diferencias relevantes en la supervivencia global entre hombres y mujeres, ya que ambas curvas presentaron trayectorias muy similares a lo largo de todo el periodo de seguimiento. Además, los intervalos de confianza mostraron un amplio solapamiento entre ambos grupos, lo que respalda la ausencia de diferencias evidentes en la probabilidad de supervivencia.
+
+Las curvas permanecieron próximas durante prácticamente todo el seguimiento, sin apreciarse una separación sostenida entre ambos grupos. Del mismo modo, la evolución temporal de la supervivencia fue comparable en hombres y mujeres, observándose descensos de magnitud similar y manteniéndose probabilidades de supervivencia cercanas durante la mayor parte del periodo de observación. Aunque pueden apreciarse pequeñas variaciones puntuales entre las curvas en determinados momentos del seguimiento, estas no siguieron un patrón consistente ni sugieren diferencias clínicamente relevantes entre ambos grupos.
+
+Asimismo, la tabla de riesgo mostró una disminución gradual del número de pacientes en seguimiento en ambos sexos a medida que avanzaba el tiempo de observación, manteniéndose una distribución relativamente equilibrada entre grupos durante gran parte del estudio. Esta circunstancia contribuye a reforzar la robustez de la comparación realizada y reduce la probabilidad de que las pequeñas diferencias observadas se deban a desequilibrios importantes en el tamaño de los grupos.
+
+Este resultado fue confirmado mediante la prueba de log-rank, que no detectó diferencias estadísticamente significativas entre hombres y mujeres (*p* = 0,75). En conjunto, estos hallazgos indican que, en esta cohorte, el sexo no se asoció de forma significativa con la supervivencia global cuando se analizó de manera individual. Por tanto, su influencia sobre el pronóstico parece limitada en comparación con otras variables clínicas y patológicas evaluadas en el estudio, las cuales mostraron una mayor capacidad para discriminar entre grupos con diferente evolución clínica.
+
 
 #### Modelo de riesgos proporcionales de Cox
 
@@ -1952,37 +2286,66 @@ A la vista de los resultados, no se detectaron valores faltantes en la matriz de
 
 Los identificadores presentes en la columna `gene_id` corresponden a identificadores de genes de la base de datos `Ensembl`, utilizados habitualmente en los datos transcriptómicos descargados desde TCGA. Aunque estos identificadores permiten una referencia unívoca de cada gen, su interpretación biológica resulta menos intuitiva que la de los símbolos génicos convencionales (por ejemplo, TP53, VHL o PBRM1).
 
-Por este motivo, se realizó una conversión de los identificadores `Ensembl` a símbolos génicos utilizando el paquete `org.Hs.eg.db` de R/Bioconductor, que contiene anotaciones actualizadas para genes humanos, junto con el paquete `AnnotationDbi`, que proporciona las funciones necesarias para realizar la correspondencia entre diferentes sistemas de identificación génica. 
+Por este motivo, se realizó una conversión de los identificadores `Ensembl` a símbolos génicos utilizando el paquete `biomaRt` de R/Bioconductor, que permite acceder de forma programática a las bases de datos de Ensembl y obtener anotaciones actualizadas para relacionar identificadores génicos con sus correspondientes símbolos oficiales.
 
 Previamente a la conversión, se eliminaron los sufijos de versión presentes en los identificadores`Ensembl` (por ejemplo, .15 en ENSG00000000003.15), ya que estos no son reconocidos por las bases de anotación empleadas.
 
-```{r convert-gene-identifiers}
+```{r convert-gene-identifiers, cache=TRUE}
 # Cargar librerías necesarias
-library(org.Hs.eg.db)
-library(AnnotationDbi)
+library(biomaRt)
+library(dplyr)
 
 # Eliminar el sufijo de versión de los identificadores Ensembl
-ensembl_ids <- sub("\\..*", "", counts_df$gene_id)
+counts_df$ensembl_id_clean <- sub("\\..*", "", counts_df$gene_id)
 
-# Convertir identificadores Ensembl a símbolos génicos
-gene_symbols <- mapIds(
-  org.Hs.eg.db,
-  keys = ensembl_ids,
-  column = "SYMBOL",
-  keytype = "ENSEMBL",
-  multiVals = "first"
+# Conectar con Ensembl BioMart
+mart <- useMart(
+  biomart = "ensembl",
+  dataset = "hsapiens_gene_ensembl"
 )
 
-# Añadir los símbolos génicos al data frame
-counts_df$gene_symbol <- gene_symbols
+# Obtener símbolos génicos
+annotations <- getBM(
+  attributes = c("ensembl_gene_id", "hgnc_symbol", "external_gene_name"),
+  filters = "ensembl_gene_id",
+  values = unique(counts_df$ensembl_id_clean),
+  mart = mart
+)
+
+# Unir anotaciones al data frame original
+counts_df <- counts_df %>%
+  left_join(
+    annotations,
+    by = c("ensembl_id_clean" = "ensembl_gene_id")
+  )
+
+# Usar primero hgnc_symbol; si no existe, usar external_gene_name
+counts_df$gene_symbol <- ifelse(
+  !is.na(counts_df$hgnc_symbol) & counts_df$hgnc_symbol != "",
+  counts_df$hgnc_symbol,
+  counts_df$external_gene_name
+)
+
+# Mantener el identificador Ensembl cuando no exista símbolo génico
+counts_df$gene_label <- ifelse(
+  is.na(counts_df$gene_symbol) | counts_df$gene_symbol == "",
+  counts_df$gene_id,
+  counts_df$gene_symbol
+)
+
+# Resumen de la anotación
+cat("Genes totales:", nrow(counts_df), "\n")
+cat("Genes con símbolo génico:", sum(!is.na(counts_df$gene_symbol) & counts_df$gene_symbol != ""), "\n")
+cat("Genes sin símbolo génico:", sum(is.na(counts_df$gene_symbol) | counts_df$gene_symbol == ""), "\n")
+cat("Porcentaje sin símbolo génico:", round(mean(is.na(counts_df$gene_symbol) | counts_df$gene_symbol == "") * 100, 2), "%\n")
 
 # Visualizar los primeros resultados
 head(
-  counts_df[, c("gene_id", "gene_symbol")]
+  counts_df[, c("gene_id", "gene_symbol", "gene_label")]
 )
 ```
 
-Tras esta conversión, cada fila del conjunto de datos dispone tanto de su identificador Ensembl original como de su correspondiente símbolo génico, facilitando la interpretación biológica de los análisis posteriores y la presentación de resultados.
+Tras esta conversión, cada fila del conjunto de datos dispone tanto de su identificador `Ensembl` original como de su correspondiente símbolo génico, facilitando la interpretación biológica de los análisis posteriores y la presentación de resultados. En total, se anotaron correctamente 42.552 (70,15 %), mientras que 18.109 genes (29,85 %) no pudieron asociarse a un símbolo génico mediante la base de datos de `Ensembl` empleada. Estos genes no anotados podrían corresponder a pseudogenes, transcritos no caracterizados, regiones genómicas poco estudiadas o identificadores obsoletos, por lo que se mantuvieron en el conjunto de datos utilizando su identificador `Ensembl` original.
 
 #### Clasificación de las muestras según tipo de tejido
 
@@ -2027,8 +2390,234 @@ head(sample_metadata)
 table(sample_metadata$sample_type)
 ```
 
-### Preparación de los datos para el análisis de expresión diferencial
+### Preprocesamiento de los datos para el análisis de expresión diferencial
 
+#### Creación del objeto DESeq2
+
+Una vez explorados y preparados los datos transcriptómicos, se procedió a llevar a cabo el preprocesameinto del conjunto de datos para el análisis de expresión diferencial. Para ello, el primer paso fue la creación del objeto `DESeqDataSet` a partir de la matriz de conteos y la tabla de metadatos de muestras. Este objeto constituye la estructura principal sobre la que se desarrollará el análisis de expresión diferencial utilizando el paquete `DESeq2`, que implementa un modelo estadístico basado en la distribución negativa binomial para identificar genes diferencialmente expresados entre grupos de muestras.
+
+```{r create-deseq2-object, cache=TRUE}
+# Cargar librerías necesarias
+library(DESeq2)
+library(dplyr)
+
+# Mantener únicamente las muestras presentes en los metadatos
+counts_matrix_deseq <- counts_matrix[, sample_metadata$sample_id]
+
+# Comprobar que el orden de las muestras coincide
+all(colnames(counts_matrix_deseq) == sample_metadata$sample_id)
+
+# Crear el objeto DESeqDataSet
+dds_tcga_kirc <- DESeqDataSetFromMatrix(
+  countData = counts_matrix_deseq,
+  colData = as.data.frame(sample_metadata),
+  design = ~ sample_type
+)
+
+# Inspeccionar el objeto creado
+dds_tcga_kirc
+```
+
+#### Filtrado de genes con baja expresión
+
+Una vez creado el objeto `DESeqDataSet`, se procedió a eliminar los genes con niveles de expresión muy bajos. Este filtrado previo es una práctica habitual en los análisis de RNA-seq, ya que los genes con conteos extremadamente reducidos aportan poca información biológica y pueden afectar a la estimación de la dispersión y a la potencia estadística del análisis diferencial. Para ello, se conservaron únicamente aquellos genes que presentaban al menos 10 lecturas en un mínimo de 10 muestras.
+
+```{r filter-low-expression-genes, cache=TRUE}
+# Cargar librerías necesarias
+library(DESeq2)
+library(dplyr)
+
+# Número de genes antes del filtrado
+n_genes_before <- nrow(dds_tcga_kirc)
+
+# Identificar genes con expresión suficiente
+keep <- rowSums(counts(dds_tcga_kirc) >= 10) >= 10
+
+# Aplicar filtrado
+dds_tcga_kirc <- dds_tcga_kirc[keep, ]
+
+# Número de genes tras el filtrado
+n_genes_after <- nrow(dds_tcga_kirc)
+
+# Crear data frame con los genes que permanecen tras el filtrado
+counts_df_filtrado <- counts_df %>%
+  filter(gene_id %in% rownames(dds_tcga_kirc))
+
+# Resumen del filtrado
+cat("Genes antes del filtrado:", n_genes_before, "\n")
+cat("Genes después del filtrado:", n_genes_after, "\n")
+cat("Genes eliminados:", n_genes_before - n_genes_after, "\n")
+cat("Genes filtrados con símbolo:", sum(!is.na(counts_df_filtrado$gene_symbol) & counts_df_filtrado$gene_symbol != ""), "\n")
+cat("Genes filtrados sin símbolo:", sum(is.na(counts_df_filtrado$gene_symbol) | counts_df_filtrado$gene_symbol == ""), "\n")
+cat("Porcentaje filtrado sin símbolo:", round(mean(is.na(counts_df_filtrado$gene_symbol) | counts_df_filtrado$gene_symbol == "") * 100, 2), "%\n")
+```
+
+Tras aplicar el criterio de filtrado, se conservaron 32.916 genes de los 60.660 inicialmente presentes en la matriz de conteos. En consecuencia, se eliminaron 27.744 genes (45,7 % del total) que presentaban niveles de expresión insuficientes en la mayoría de las muestras.
+
+#### Normalización de los datos transccriptómicos mediante DESeq2
+
+Una vez eliminados los genes con baja expresión, se procedió a la normalización de los datos transcriptómicos utilizando el paquete `DESeq2`. Este procedimiento permite corregir las diferencias en la cantidad de lecturas obtenidas en cada muestra de secuenciación, permitiendo comparar de forma fiable los niveles de expresión génica entre las muestras tumorales y las normales. Asimismo, durante este proceso se estiman las dispersiones génicas y se ajusta el modelo estadístico basado en la distribución binomial negativa que será utilizado posteriormente para el análisis de expresión diferencial.
+
+```{r normalize-count-data, cache=TRUE}
+# Cargar librerías necesarias
+library(DESeq2)
+
+# Normalización y ajuste del modelo estadístico
+dds_tcga_kirc <- DESeq(dds_tcga_kirc)
+
+# Visualizar el objeto normalizado
+dds_tcga_kirc
+```
+
+#### Transformación estabilizadora de la varianza (VST)
+
+Una vez ajustado el modelo estadístico mediante `DESeq2`, se aplicó la transformación estabilizadora de la varianza (Variance Stabilizing Transformation, VST) utilizando la función `vst()`. Esta transformación reduce la dependencia existente entre la media y la varianza de los datos de expresión génica, generando valores transformados con una varianza aproximadamente constante a lo largo del rango de expresión.
+
+```{r apply-vst-transformation, cache=TRUE}
+# Cargar librería necesaria
+library(DESeq2)
+
+# Aplicar la transformación estabilizadora de la varianza
+vsd_tcga_kirc <- vst(dds_tcga_kirc, blind = FALSE)
+
+# Visualizar el objeto transformado
+vsd_tcga_kirc
+```
+
+### Análisis exploratorio mediante PCA
+
+Tras la aplicación de la transformación VST, se realizó un análisis de componentes principales (PCA) con el objetivo de explorar la estructura global de los datos transcriptómicos y evaluar la capacidad de las principales fuentes de variación para discriminar entre las muestras tumorales y las muestras de tejido normal.
+
+```{r pca-analysis, fig.width=6.5, fig.height=4, fig.align='center', out.width='90%', fig.pos='H', fig.cap='Análisis de componentes principales (PCA) de los datos transcriptómicos transformados mediante VST, mostrando la separación entre muestras tumorales y normales.'}
+# Cargar librerías necesarias
+library(DESeq2)
+library(ggplot2)
+library(ggrepel)
+library(dplyr)
+
+# Realizar el análisis de componentes principales
+
+pca_data <- plotPCA(vsd_tcga_kirc, intgroup = "sample_type", returnData = TRUE)
+percent_var <- round(100 * attr(pca_data, "percentVar"))
+
+# Graficar el PCA
+ggplot(pca_data, aes(x = PC1, y = PC2, color =
+                   sample_type)) +
+  geom_point(size = 3) +
+  labs(
+    x = paste0("PC1: ", percent_var[1], "% varianza"),
+    y = paste0("PC2: ", percent_var[2], "% varianza"),
+    title = ""
+  ) +
+  theme_minimal() +
+  scale_color_manual(values = c("Tumor primario" = "#0B7285", "Tejido normal" = "#75D054")) +
+  theme(legend.title = element_blank())    
+
+```
+
+El PCA mostró una clara separación entre las muestras de tejido tumoral y normal, principalmente a lo largo del primer componente principal (PC1), que explicó el 30 % de la variabilidad total de los datos. Las muestras tumorales presentaron una mayor dispersión en el espacio multivariado, lo que refleja una elevada heterogeneidad transcriptómica entre ellas. En contraste, las muestras de tejido normal se agruparon de manera más compacta, indicando una mayor homogeneidad en sus perfiles de expresión génica. Estos resultados sugieren que el estado tumoral constituye una de las principales fuentes de variación en los datos transcriptómicos y evidencian diferencias moleculares significativas entre ambos grupos de muestras.
+
+### Análisis de expresión diferencial entre muestras tumorales y normales
+
+Con el objetivo de identificar los genes cuya expresión difiere significativamente entre las muestras tumorales y normales, se realizó un análisis de expresión diferencial utilizando los datos de secuenciación de ARN previamente normalizados. Este análisis permitió detectar genes sobreexpresados y subexpresados en el tejido tumoral, proporcionando información sobre las alteraciones moleculares asociadas al estado tumoral.
+
+```{r differential-expression-analysis, cache=TRUE, fig.width=7.5, fig.height=6, fig.align='center', out.width='90%', fig.pos='H', fig.cap='Volcanoplot de los resultados del análisis de expresión diferencial entre muestras tumorales y normales, mostrando los genes diferencialmente expresados.'}
+# Cargar librerías necesarias
+library(DESeq2)
+library(dplyr)
+library(ggplot2)
+library(ggrepel)
+library(tibble)
+
+# Realizar el análisis de expresión diferencial
+res_deseq2 <- results(
+  dds_tcga_kirc,
+  contrast = c("sample_type", "Tumor primario", "Tejido normal")
+)
+
+# Convertir los resultados a data frame, añadir símbolos génicos y clasificar genes
+res_df <- as.data.frame(res_deseq2) %>%
+  rownames_to_column("gene_id") %>%
+  left_join(
+    counts_df %>% dplyr::select(gene_id, gene_symbol),
+    by = "gene_id"
+  ) %>%
+  filter(!is.na(padj), !is.na(log2FoldChange)) %>%
+  mutate(
+    gene_label = gene_symbol,
+    minus_log10_padj = -log10(padj),
+    regulation = case_when(
+      padj < 0.05 & log2FoldChange > 1  ~ "Sobreexpresados",
+      padj < 0.05 & log2FoldChange < -1 ~ "Subexpresados",
+      TRUE ~ "No significativos"
+    )
+  )
+
+# Seleccionar genes significativos para etiquetar
+genes_label <- bind_rows(
+  res_df %>%
+    filter(regulation == "Sobreexpresados") %>%
+    arrange(padj) %>%
+    slice_head(n = 20),
+
+  res_df %>%
+    filter(regulation == "Subexpresados") %>%
+    arrange(padj) %>%
+    slice_head(n = 20)
+)
+
+# Graficar el volcanoplot
+ggplot(res_df, aes(x = log2FoldChange, y = minus_log10_padj, color = regulation)) +
+  geom_point(alpha = 0.6, size = 1.1) +
+  geom_vline(xintercept = c(-1, 1), linetype = "dashed", color = "grey45") +
+  geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "grey45") +
+  geom_text_repel(
+    data = genes_label,
+    aes(label = gene_label),
+    size = 3,
+    max.overlaps = 30,
+    box.padding = 0.4,
+    point.padding = 0.3,
+    show.legend = FALSE
+  ) +
+  scale_color_manual(
+    values = c(
+      "Subexpresados" = "#4DA3C7",
+      "No significativos" = "grey75",
+      "Sobreexpresados" = "#2DBA9A"
+    )
+  ) +
+  labs(
+    x = expression(Log[2]~Fold~Change),
+    y = expression(-Log[10]~"(padj)"),
+    color = ""
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "top",
+    legend.direction = "horizontal",
+    legend.justification = "center",
+    panel.grid.minor = element_blank()
+  )
+```
+
+El volcanoplot (Figura \ref{fig:differential-expression-analysis}) obtenido a partir del análisis de expresión diferencial entre muestras tumorales y tejido renal normal revela una marcada alteración transcriptómica asociada al carcinoma renal de células claras (ccRCC). Se observa un elevado número de genes significativamente sobreexpresados y subexpresados, reflejando los profundos cambios moleculares que caracterizan a este subtipo tumoral [@tcga_kirc_nature_2013].
+
+Entre los genes más sobreexpresados destacan **CA9** (*Carbonic Anhydrase IX*), **NDUFA4L2** (*NADH Dehydrogenase [Ubiquinone] 1 Alpha Subcomplex, 4-Like 2*), **EGLN3** (*Egl-9 Family Hypoxia Inducible Factor 3*), **HILPDA** (*Hypoxia Inducible Lipid Droplet Associated*), **SCARB1** (*Scavenger Receptor Class B Member 1*) y **PVT1** (*Plasmacytoma Variant Translocation 1*). Estos genes se encuentran estrechamente relacionados con la respuesta celular a la hipoxia y constituyen componentes bien conocidos de la firma transcripcional asociada a la activación de la vía **VHL–HIF**, considerada el principal eje molecular implicado en la patogénesis del carcinoma renal de células claras [@kaelin_vhl_kidney_cancer_2004; @schodel_hypoxia_renal_cancer_2019].
+
+La presencia de **CA9 (Carbonic Anhydrase IX)** resulta particularmente relevante, ya que constituye uno de los biomarcadores más característicos de ccRCC y su expresión se encuentra regulada por los factores inducibles por hipoxia (HIF) [@bui_ca9_ccrcc_2003; @choueiri_hif2_vegf_2020]. Del mismo modo, **NDUFA4L2**, **EGLN3** y **HILPDA** son genes inducidos por hipoxia frecuentemente descritos entre los transcritos más sobreexpresados en tumores con pérdida funcional de VHL [@fu_ndufa4l2_2015; @schodel_hypoxia_renal_cancer_2019]. La sobreexpresión coordinada de estos genes proporciona evidencia indirecta de la activación constitutiva de la señalización HIF característica de este subtipo tumoral.
+
+Asimismo, la sobreexpresión de **PVT1**, un ARN largo no codificante con funciones oncogénicas descritas en diversos tumores sólidos, ha sido asociada con la progresión tumoral y el peor pronóstico en carcinoma renal de células claras [@ren_pvt1_ccrcc_2019].
+
+Aunque el gen **VHL** no aparece entre los genes etiquetados con mayor significación estadística, este resultado no resulta inesperado. En ccRCC, la relevancia biológica de VHL deriva principalmente de mutaciones, deleciones o pérdida de función proteica más que de cambios extremos en sus niveles de expresión génica [@kaelin_vhl_kidney_cancer_2004]. En consecuencia, la activación de genes diana regulados por HIF suele constituir una evidencia más clara de la alteración de esta vía que la propia expresión de VHL [@schodel_hypoxia_renal_cancer_2019; @choueiri_hif2_vegf_2020].
+
+\newpage
+
+## Integración de datos clínicos y transcriptómicos
+
+### Selección de genes candidatos de intéres
+### Visualización de la expresión génica mediante clustering jerárquico
+### Asociación entre la expresión génica y la supervivencia global
 
 \newpage
 
