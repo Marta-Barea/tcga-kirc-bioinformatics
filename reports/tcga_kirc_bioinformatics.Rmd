@@ -2645,10 +2645,162 @@ Asimismo, la sobreexpresión de **PVT1**, un ARN largo no codificante con funcio
 
 Aunque el gen **VHL** no aparece entre los genes etiquetados con mayor significación estadística, este resultado no resulta inesperado. En ccRCC, la relevancia biológica de VHL deriva principalmente de mutaciones, deleciones o pérdida de función proteica más que de cambios extremos en sus niveles de expresión génica [@kaelin_vhl_kidney_cancer_2004]. En consecuencia, la activación de genes diana regulados por HIF suele constituir una evidencia más clara de la alteración de esta vía que la propia expresión de VHL [@schodel_hypoxia_renal_cancer_2019; @choueiri_hif2_vegf_2020].
 
+### Visualización de la expresión génica mediante clustering jerárquico
+
+Con el objetivo de explorar de forma más detallada los patrones de expresión asociados al estado tumoral, se seleccionó un subconjunto de genes candidatos a partir de los resultados del análisis de expresión diferencial. La selección se basó en los genes etiquetados en el volcanoplot, correspondientes a aquellos con mayor significación estadística y magnitud de cambio de expresión entre las muestras tumorales y las muestras de tejido renal normal.
+
+Los genes seleccionados incluyen CA9, NDUFA4L2, EGLN3, HILPDA, SCARB1, STC2, COL23A1, CDKN2A, GABRD, PVT1, TTC21B-AS1 y LINC00887. En conjunto, estos genes representan procesos biológicos relevantes en el carcinoma renal de células claras, incluyendo la respuesta a hipoxia y la activación de la vía VHL-HIF, la reprogramación metabólica, la regulación del ciclo celular y la progresión tumoral.
+
+Con el fin de evaluar la capacidad discriminativa de estos genes y visualizar sus patrones de expresión conjunta, se generó un mapa de calor utilizando los valores de expresión transformados mediante VST. Además, se aplicó clustering jerárquico tanto a genes como a muestras para identificar posibles agrupamientos asociados al estado tumoral.
+
+```{r heatmap-code}
+# Load libraries
+library(dplyr)
+library(tibble)
+library(ComplexHeatmap)
+library(circlize)
+library(grid)
+
+# Candidate genes selected from the volcano plot
+candidate_genes <- tibble(
+  gene_symbol = c(
+    "CA9",
+    "NDUFA4L2",
+    "EGLN3",
+    "HILPDA",
+    "SCARB1",
+    "STC2",
+    "COL23A1",
+    "CDKN2A",
+    "GABRD",
+    "PVT1",
+    "TTC21B-AS1",
+    "LINC00887"
+  ),
+  gene_category = c(
+    "Hypoxia / VHL-HIF",
+    "Hypoxia / VHL-HIF",
+    "Hypoxia / VHL-HIF",
+    "Hypoxia / VHL-HIF",
+    "Metabolism",
+    "Hypoxia / VHL-HIF",
+    "Tumor progression",
+    "Cell cycle",
+    "Tumor progression",
+    "Oncogenic lncRNA",
+    "Oncogenic lncRNA",
+    "Oncogenic lncRNA"
+  )
+)
+
+# Extract VST-normalized expression matrix
+vst_matrix <- assay(vsd_tcga_kirc)
+
+# Match selected genes with Ensembl identifiers
+gene_info <- counts_df %>%
+  select(gene_id, gene_symbol) %>%
+  inner_join(candidate_genes, by = "gene_symbol") %>%
+  distinct(gene_symbol, .keep_all = TRUE)
+
+# Extract expression values for selected genes
+heatmap_matrix <- vst_matrix[
+  gene_info$gene_id,
+  sample_metadata$sample_id
+]
+
+# Replace Ensembl IDs with gene symbols
+rownames(heatmap_matrix) <- gene_info$gene_symbol
+
+# Row-wise Z-score transformation
+heatmap_matrix <- t(scale(t(heatmap_matrix)))
+
+# Annotation colours
+tissue_colors <- c(
+  "Tejido normal" = "#2C7FB8",
+  "Tumor primario" = "#41B6C4"
+)
+
+category_colors <- c(
+  "Hypoxia / VHL-HIF" = "#1B9E77",
+  "Metabolism" = "#66A61E",
+  "Cell cycle" = "#1F78B4",
+  "Tumor progression" = "#80B1D3",
+  "Oncogenic lncRNA" = "#A6CEE3"
+)
+
+# Heatmap colour scale
+heatmap_colors <- colorRamp2(
+  c(-2, 0, 2),
+  c(
+    "#2C7FB8",
+    "white",
+    "#1B9E77"
+  )
+)
+
+# Column annotation (sample type)
+column_annotation <- HeatmapAnnotation(
+  Tissue = sample_metadata$sample_type,
+  col = list(
+    Tissue = tissue_colors
+  ),
+  annotation_name_gp = gpar(
+    fontsize = 10,
+    fontface = "bold"
+  )
+)
+
+# Row annotation (gene category)
+row_annotation <- rowAnnotation(
+  Category = gene_info$gene_category,
+  col = list(
+    Category = category_colors
+  ),
+  annotation_name_gp = gpar(
+    fontsize = 10,
+    fontface = "bold"
+  )
+)
+
+# Heatmap
+heatmap_plot <- Heatmap(
+  heatmap_matrix,
+  name = "Z-score",
+  col = heatmap_colors,
+  top_annotation = column_annotation,
+  right_annotation = row_annotation,
+  cluster_rows = TRUE,
+  cluster_columns = TRUE,
+  clustering_method_rows = "complete",
+  clustering_method_columns = "complete",
+  show_column_names = FALSE,
+  show_row_names = TRUE,
+  row_names_gp = gpar(
+    fontsize = 10,
+    fontface = "bold"
+  ),
+  border = FALSE,
+  row_title = NULL,
+  column_title = NULL,
+  heatmap_legend_param = list(
+    title = "Z-score"
+  )
+)
+```
+
+El mapa de calor mostró una clara separación entre las muestras tumorales y las muestras de tejido renal normal, evidenciando la capacidad discriminativa de los genes seleccionados para distinguir ambos estados biológicos. Los genes relacionados con la respuesta a hipoxia y la activación de la vía VHL–HIF, entre ellos **CA9**, **NDUFA4L2**, **EGLN3**, **HILPDA** y **STC2**, presentaron patrones de expresión altamente coordinados y tendieron a agruparse dentro del dendrograma, reflejando la activación conjunta de procesos moleculares característicos del carcinoma renal de células claras.
+
+Asimismo, aunque las muestras tumorales mostraron una mayor heterogeneidad transcriptómica que las muestras normales, el clustering jerárquico reveló una clara separación entre ambos grupos. La mayoría de las muestras se agruparon según su origen biológico, diferenciando de forma consistente el tejido tumoral del tejido renal normal. Este resultado es coherente con los patrones observados previamente en el análisis de componentes principales (PCA). De forma consistente, genes como **PVT1**, **CDKN2A**, **COL23A1** y **SCARB1** también mostraron perfiles de expresión diferencial entre ambos grupos, apoyando su posible implicación en procesos relacionados con la progresión tumoral, la regulación del ciclo celular y la reprogramación metabólica.
+
+En conjunto, estos resultados confirman la existencia de una firma transcriptómica asociada al estado tumoral en ccRCC y respaldan la relevancia biológica de los genes seleccionados para los análisis posteriores de integración clínico-transcriptómica y supervivencia.
+
+```{r, fig.width=7.5, fig.height=8, fig.align='center', out.width='90%', fig.pos='H', fig.cap='Mapa de calor de la expresión génica de los genes candidatos seleccionados a partir del análisis de expresión diferencial, mostrando la agrupación de muestras tumorales y normales.'}
+# Graficar el heatmap
+heatmap_plot
+```
+
 ## Integración de datos clínicos y transcriptómicos
 
-### Selección de genes candidatos de intéres
-### Visualización de la expresión génica mediante clustering jerárquico
 ### Asociación entre la expresión génica y la supervivencia global
 
 \newpage
