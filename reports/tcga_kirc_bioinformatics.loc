@@ -45,5 +45,10 @@
 \contentsline {codeblock}{\numberline {Codigo~45}Clasificacion de las muestras transcriptomicas segun el tipo de tejido}{104}{codeblock.45}%
 \contentsline {codeblock}{\numberline {Codigo~46}Analisis de componentes principales sobre los datos transcriptomicos transformados}{109}{codeblock.46}%
 \contentsline {codeblock}{\numberline {Codigo~47}Analisis de expresion diferencial entre muestras tumorales y normales}{111}{codeblock.47}%
-\contentsline {codeblock}{\numberline {Codigo~48}Heatmap Code}{114}{codeblock.48}%
-\contentsline {codeblock}{\numberline {Codigo~49}Unnamed Chunk 1}{117}{codeblock.49}%
+\contentsline {codeblock}{\numberline {Codigo~48}Preparacion de la matriz de expresion y configuracion del mapa de calor}{114}{codeblock.48}%
+\contentsline {codeblock}{\numberline {Codigo~49}Renderizado final del mapa de calor de expresion genica de los genes candidatos}{117}{codeblock.49}%
+\contentsline {codeblock}{\numberline {Codigo~50}Integracion de la expresion genica tumoral con los datos clinicos de supervivencia}{119}{codeblock.50}%
+\contentsline {codeblock}{\numberline {Codigo~51}Tabla resumen de los modelos de Cox univariantes para los genes candidatos}{121}{codeblock.51}%
+\contentsline {codeblock}{\numberline {Codigo~52}Representacion grafica de los hazard ratios asociados a la expresion de los genes candidatos}{123}{codeblock.52}%
+\contentsline {codeblock}{\numberline {Codigo~53}Shiny App Run Command}{126}{codeblock.53}%
+\contentsline {codeblock}{\numberline {Codigo~54}Contenido del script principal de la aplicacion Shiny}{126}{codeblock.54}%

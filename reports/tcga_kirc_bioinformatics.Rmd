@@ -126,7 +126,12 @@ code_titles <- c(
   "normalize-count-data" = "Normalizacion de conteos y ajuste del modelo estadistico con DESeq2.",
   "apply-vst-transformation" = "Aplicacion de la transformacion estabilizadora de la varianza.",
   "pca-analysis" = "Analisis de componentes principales sobre los datos transcriptomicos transformados.",
-  "differential-expression-analysis" = "Analisis de expresion diferencial entre muestras tumorales y normales."
+  "differential-expression-analysis" = "Analisis de expresion diferencial entre muestras tumorales y normales.",
+  "heatmap-code" = "Preparacion de la matriz de expresion y configuracion del mapa de calor.",
+  "heatmap-figure-render" = "Renderizado final del mapa de calor de expresion genica de los genes candidatos.",
+  "clinical-transcriptomic-integration" = "Integracion de la expresion genica tumoral con los datos clinicos de supervivencia.",
+  "clinical-transcriptomic-integration-table" = "Tabla resumen de los modelos de Cox univariantes para los genes candidatos.",
+  "clinical-transcriptomic-integration-plot" = "Representacion grafica de los hazard ratios asociados a la expresion de los genes candidatos."
 )
 
 derive_code_title <- function(options) {
@@ -328,7 +333,7 @@ Aplicar técnicas bioinformáticas al análisis de datos clínicos y transcript�
 
 ## Entorno computacional y software utilizado
 
-Todos los análisis y visualizaciones de este trabajo se realizaron en el entorno estadístico **R** versión **`r getRversion()`** (*`r R.version.string`*), sobre la plataforma **`r R.version$platform`**. El desarrollo del flujo de trabajo, la edición del código y la compilación del informe se llevaron a cabo en **RStudio 2026.05.0+218 "Golden Wattle" Release**, para macOS, con **Quarto 1.9.37** integrado en dicho entorno.
+Todos los análisis y visualizaciones de este trabajo se realizaron en el entorno estadístico **R** versión **`r getRversion()`** (*`r R.version.string`*), sobre la plataforma **`r R.version$platform`**. El desarrollo del flujo de trabajo, la edición del código y la compilación del informe se llevaron a cabo en **RStudio 2026.05.0+218 "Golden Wattle" Release**, para macOS, con **Quarto 1.9.37** integrado en dicho entorno. El código fuente del proyecto se gestionó mediante el sistema de control de versiones **Git** y se alojó en un repositorio público de **GitHub** \href{https://github.com/Marta-Barea/tcga-kirc-bioinformatics}{\textcolor{uocblue}{biostatistics-ml-r}}.
 
 El análisis combinó paquetes de **CRAN** y **Bioconductor** orientados a la adquisición de datos, manipulación de estructuras transcriptómicas, análisis estadístico, visualización y análisis de expresión diferencial. La Tabla \ref{tab:software-packages} resume las principales bibliotecas empleadas y sus versiones, obtenidas directamente desde la sesión de R mediante `packageVersion()` y detectadas automáticamente a partir de las llamadas a `library()` y `require()` presentes en este documento.
 
@@ -2794,22 +2799,297 @@ Asimismo, aunque las muestras tumorales mostraron una mayor heterogeneidad trans
 
 En conjunto, estos resultados confirman la existencia de una firma transcriptómica asociada al estado tumoral en ccRCC y respaldan la relevancia biológica de los genes seleccionados para los análisis posteriores de integración clínico-transcriptómica y supervivencia.
 
-```{r, fig.width=7.5, fig.height=8, fig.align='center', out.width='90%', fig.pos='H', fig.cap='Mapa de calor de la expresión génica de los genes candidatos seleccionados a partir del análisis de expresión diferencial, mostrando la agrupación de muestras tumorales y normales.'}
+```{r heatmap-figure-render, fig.width=7.5, fig.height=8, fig.align='center', out.width='90%', fig.pos='H', fig.cap='Mapa de calor de la expresión génica de los genes candidatos seleccionados a partir del análisis de expresión diferencial, mostrando la agrupación de muestras tumorales y normales.'}
 # Graficar el heatmap
 heatmap_plot
 ```
 
 ## Integración de datos clínicos y transcriptómicos
 
-### Asociación entre la expresión génica y la supervivencia global
+Los análisis transcriptómicos realizados previamente permitieron identificar genes diferencialmente expresados entre las muestras tumorales y normales, así como caracterizar los principales patrones moleculares presentes en la cohorte TCGA-KIRC. Sin embargo, para comprender mejor la relevancia biológica y clínica de estos hallazgos, resulta necesario analizar dichas alteraciones en el contexto de la evolución de los pacientes. En este sentido, la integración de los datos clínicos y transcriptómicos permite explorar posibles asociaciones entre los perfiles de expresión génica observados y variables de interés clínico.
+
+Con este objetivo, se evaluó la asociación entre la expresión de los genes candidatos identificados durante el análisis transcriptómico y la supervivencia global de los pacientes. Para cada gen, los individuos fueron clasificados en grupos de alta y baja expresión utilizando como punto de corte la mediana de expresión observada en las muestras tumorales primarias. Posteriormente, se ajustaron modelos de riesgos proporcionales de Cox con el fin de estimar el efecto de cada gen sobre el riesgo relativo de mortalidad.
+
+```{r clinical-transcriptomic-integration, cache=TRUE}
+# Cargar librerías necesarias
+library(dplyr)
+library(tibble)
+library(survival)
+
+# Identificar muestras tumorales primarias y genes candidatos con anotación disponible
+tumor_sample_metadata <- sample_metadata %>%
+  dplyr::filter(sample_type == "Tumor primario")
+
+integration_gene_info <- counts_df %>%
+  dplyr::select(gene_id, gene_symbol) %>%
+  dplyr::inner_join(
+    candidate_genes %>% dplyr::select(gene_symbol),
+    by = "gene_symbol"
+  ) %>%
+  dplyr::distinct(gene_symbol, .keep_all = TRUE)
+
+vst_matrix <- assay(vsd_tcga_kirc)
+
+# Construir un conjunto de datos por gen con supervivencia y expresión tumoral media por paciente
+gene_survival_datasets <- lapply(integration_gene_info$gene_symbol, function(current_gene) {
+  current_gene_id <- integration_gene_info$gene_id[
+    integration_gene_info$gene_symbol == current_gene
+  ][1]
+
+  gene_expression_by_patient <- tibble(
+    bcr_patient_barcode = tumor_sample_metadata$patient_id,
+    sample_id = tumor_sample_metadata$sample_id,
+    gene_expression = as.numeric(vst_matrix[current_gene_id, tumor_sample_metadata$sample_id])
+  ) %>%
+    dplyr::group_by(bcr_patient_barcode) %>%
+    dplyr::summarise(
+      gene_expression = mean(gene_expression, na.rm = TRUE),
+      .groups = "drop"
+    )
+
+  clinical_data_final %>%
+    dplyr::select(
+      bcr_patient_barcode,
+      survival_time,
+      death_event,
+      ajcc_pathologic_stage,
+      tumor_grade,
+      age_at_diagnosis,
+      sex_at_birth
+    ) %>%
+    dplyr::inner_join(gene_expression_by_patient, by = "bcr_patient_barcode") %>%
+    dplyr::mutate(
+      gene_symbol = current_gene,
+      gene_group = dplyr::if_else(
+        gene_expression >= median(gene_expression, na.rm = TRUE),
+        "High",
+        "Low"
+      ),
+      gene_group = factor(gene_group, levels = c("Low", "High"))
+    )
+})
+
+names(gene_survival_datasets) <- integration_gene_info$gene_symbol
+
+# Ajustar un modelo de Cox univariante por gen y resumir resultados
+clinical_transcriptomic_results <- bind_rows(lapply(
+  names(gene_survival_datasets),
+  function(current_gene) {
+    gene_dataset <- gene_survival_datasets[[current_gene]]
+    gene_cox_model <- coxph(
+      Surv(survival_time, death_event) ~ gene_group,
+      data = gene_dataset
+    )
+
+    gene_summary <- summary(gene_cox_model)
+    gene_confint <- suppressMessages(confint(gene_cox_model))
+
+    tibble(
+      gene_symbol = current_gene,
+      n_patients = nrow(gene_dataset),
+      low_expression_n = sum(gene_dataset$gene_group == "Low"),
+      high_expression_n = sum(gene_dataset$gene_group == "High"),
+      hazard_ratio = unname(gene_summary$coefficients["gene_groupHigh", "exp(coef)"]),
+      conf_low = unname(exp(gene_confint["gene_groupHigh", 1])),
+      conf_high = unname(exp(gene_confint["gene_groupHigh", 2])),
+      p_value = unname(gene_summary$coefficients["gene_groupHigh", "Pr(>|z|)"])
+    )
+  }
+)) %>%
+  dplyr::mutate(
+    expression_effect = dplyr::if_else(
+      hazard_ratio > 1,
+      "Mayor riesgo en alta expresión",
+      "Menor riesgo en alta expresión"
+    )
+  ) %>%
+  dplyr::arrange(p_value)
+
+# Mostrar un resumen de resultados
+clinical_transcriptomic_results
+```
+
+La Tabla \ref{tab:clinical-transcriptomic-integration-table} resume los resultados de los modelos de Cox univariantes ajustados para cada uno de los genes candidatos, comparando los grupos de alta y baja expresión definidos a partir de la mediana de expresión tumoral.
+
+```{r clinical-transcriptomic-integration-table, results='asis'}
+# Cargar librerías necesarias
+library(kableExtra)
+
+clinical_transcriptomic_results_latex <- clinical_transcriptomic_results %>%
+  dplyr::mutate(
+    `HR (IC95%)` = sprintf(
+      "%.2f (%.2f-%.2f)",
+      hazard_ratio,
+      conf_low,
+      conf_high
+    ),
+    `p-valor` = dplyr::if_else(
+      p_value < 0.001,
+      "<0.001",
+      sprintf("%.3f", p_value)
+    ),
+    expression_effect = dplyr::recode(
+      expression_effect,
+      "Mayor riesgo en alta expresión" = "Mayor riesgo",
+      "Menor riesgo en alta expresión" = "Menor riesgo"
+    )
+  ) %>%
+  dplyr::select(
+    gene_symbol,
+    n_patients,
+    low_expression_n,
+    high_expression_n,
+    `HR (IC95%)`,
+    `p-valor`,
+    expression_effect
+  ) %>%
+  knitr::kable(
+    format = "latex",
+    booktabs = TRUE,
+    linesep = "",
+    caption = paste(
+      "Resultados de los modelos de Cox univariantes ajustados para los genes candidatos,",
+      "comparando alta frente a baja expresión en muestras tumorales primarias."
+    ),
+    col.names = c(
+      "Gen",
+      "Pacientes",
+      "Baja expr.",
+      "Alta expr.",
+      "HR (IC95%)",
+      "p-valor",
+      "Interpretación"
+    ),
+    align = c("c", "c", "c", "c", "c", "c", "l")
+  ) %>%
+  style_report_table(latex_options = c("hold_position", "scale_down")) %>%
+  column_spec(1, width = "1.7cm", bold = TRUE) %>%
+  column_spec(5, width = "2.8cm") %>%
+  column_spec(7, width = "2.9cm")
+
+clinical_transcriptomic_results_latex <- add_table_label(
+  clinical_transcriptomic_results_latex,
+  "tab:clinical-transcriptomic-integration"
+)
+
+cat(clinical_transcriptomic_results_latex)
+cat("\\FloatBarrier\n")
+```
+
+A la vista de los resultados se identificaron tres genes con asociación significativa con la supervivencia global. En particular, la alta expresión de **PVT1** se asoció con un incremento significativo del riesgo de muerte (**HR = 2,30; IC95%: 1,68–3,16; p < 0,001**), mientras que la alta expresión de **CDKN2A** también mostró una asociación desfavorable con la supervivencia (**HR = 1,41; IC95%: 1,05–1,91; p = 0,024**). Por el contrario, **GABRD** presentó un efecto protector, asociándose a una reducción significativa del riesgo de muerte (**HR = 0,68; IC95%: 0,50–0,92; p = 0,011**).
+
+Para el resto de los genes analizados no se observaron asociaciones estadísticamente significativas con la supervivencia global (*p* > 0,05), aunque algunos mostraron tendencias compatibles con posibles efectos biológicos. En conjunto, estos resultados sugieren que **PVT1** y **CDKN2A** podrían actuar como marcadores de peor pronóstico, mientras que **GABRD** podría asociarse a una evolución clínica más favorable en la cohorte TCGA-KIRC.
+
+Con el fin de facilitar la comparación visual entre genes, en la Figura \ref{fig:clinical-transcriptomic-integration-plot} se representan los hazard ratios estimados y sus intervalos de confianza del 95 %. La línea vertical discontinua en HR = 1 indica ausencia de asociación entre el grupo de expresión y el riesgo del evento.
+
+```{r clinical-transcriptomic-integration-plot, fig.width=7.5, fig.height=4.8, fig.align='center', out.width='92%', fig.pos='H', fig.cap='Hazard ratios estimados para los genes candidatos al comparar alta frente a baja expresión tumoral en modelos de Cox univariantes.'}
+# Cargar librerías necesarias
+library(ggplot2)
+
+clinical_transcriptomic_plot_data <- clinical_transcriptomic_results %>%
+  mutate(
+    gene_symbol = factor(
+      gene_symbol,
+      levels = rev(gene_symbol)
+    ),
+    is_significant = p_value < 0.05
+  )
+
+ggplot(
+  clinical_transcriptomic_plot_data,
+  aes(x = hazard_ratio, y = gene_symbol, color = is_significant)
+) +
+  geom_vline(xintercept = 1, linetype = "dashed", color = "grey55") +
+  geom_errorbarh(
+    aes(xmin = conf_low, xmax = conf_high),
+    height = 0.18,
+    linewidth = 0.5
+  ) +
+  geom_point(size = 2.8) +
+  scale_color_manual(
+    values = c("TRUE" = "#0B7285", "FALSE" = "grey60"),
+    labels = c("FALSE" = "No significativo", "TRUE" = "p < 0.05"),
+    name = "Asociación"
+  ) +
+  labs(
+    x = "Hazard ratio (alta frente a baja expresión)",
+    y = NULL,
+    title = ""
+  ) +
+  theme_minimal(base_size = 11) +
+  theme(
+    panel.grid.minor = element_blank(),
+    legend.position = "top",
+    plot.title = element_text(face = "bold", hjust = 0.5)
+  )
+```
+
+A la vista de los resultados, se observa que únicamente **PVT1**, **CDKN2A** y **GABRD** presentan asociaciones estadísticamente significativas con la supervivencia global, al mostrar intervalos de confianza que no incluyen el valor de referencia (**HR = 1**). La alta expresión de **PVT1** y **CDKN2A** se asoció con un mayor riesgo de muerte, mientras que **GABRD** mostró una asociación protectora. Por el contrario, el resto de los genes presentaron intervalos de confianza compatibles con ausencia de efecto sobre la supervivencia. En conjunto, estos resultados identifican a **PVT1**, **CDKN2A** y **GABRD** como los principales genes con valor pronóstico dentro del conjunto de candidatos analizados.
 
 \newpage
 
 # Shiny App
 
+Con el objetivo de complementar el análisis desarrollado en este trabajo y facilitar la exploración interactiva de los resultados, se desarrolló una aplicación **Shiny** incluida en el directorio `app/` del proyecto. Esta aplicación permite consultar de forma visual y dinámica los datos clínicos y transcriptómicos preparados previamente, sin necesidad de ejecutar manualmente cada bloque del análisis.
+
+La aplicación se organiza en tres vistas principales. En la pestaña **Resumen** se presentan métricas globales de la cohorte y una visualización de la distribución de variables clínicas relevantes. En la pestaña **Genes** es posible seleccionar genes candidatos y comparar sus niveles de expresión entre distintos grupos clínicos o tipos de tejido. Finalmente, en la pestaña **Supervivencia** se muestran curvas de Kaplan-Meier estratificadas por variables clínicas o por niveles de expresión génica, lo que permite extender de forma interactiva los resultados obtenidos en el informe.
+
+Desde el punto de vista técnico, la aplicación carga directamente los datos preparados almacenados en `data/prepared/`, reutilizando así el flujo de trabajo construido para el análisis reproducible. En concreto, emplea el archivo clínico `clinical_data_TCGA_KIRC.rds`, que contiene la cohorte clínica ya depurada y recodificada, y el objeto transcriptómico `tcga_kirc_star_counts_se.rds`, generado previamente a partir del script de descarga y preparación de datos. No obstante, con el fin de hacer la aplicación más ligera y centrada en los resultados principales del informe, la parte transcriptómica no expone la matriz completa de expresión, sino una versión reducida basada en el subconjunto de genes candidatos seleccionados tras el análisis diferencial. Su implementación se apoya principalmente en **shiny**, **bslib**, **ggplot2**, **DT**, **dplyr** y **survival**, integrando tablas, gráficos y controles interactivos dentro de una interfaz web unificada.
+
+La aplicación se encuentra desplegada y lista para su uso en la plataforma **shinyapps.io**, accesible desde el siguiente enlace:
+
+\url{https://marta-barea-sepul.shinyapps.io/tcga-kirc-explorer/}
+
+Para ejecutarla en local desde la raíz del proyecto puede utilizarse el siguiente comando:
+
+```{r shiny-app-run-command, eval=FALSE}
+shiny::runApp("app")
+```
+
+A continuación se muestra el contenido completo del script principal de la aplicación. Al igual que en la sección de adquisición de datos, se incluye únicamente con fines documentales y no se evalúa durante la compilación del informe.
+
+```{r shiny-app-script-preview, echo=FALSE, results='asis', code_title="Contenido del script principal de la aplicacion Shiny."}
+# Mostrar el contenido del script principal de la aplicacion
+script_candidates <- c(
+  "../app/app.R",
+  "app/app.R"
+)
+
+# Buscar el script en las posibles ubicaciones
+script_path <- script_candidates[file.exists(script_candidates)][1]
+
+if (is.na(script_path)) {
+  stop(
+    "No se encontro el script app/app.R.",
+    call. = FALSE
+  )
+}
+
+# Mostrar el contenido del script
+cat("```r\n")
+cat(readLines(script_path, warn = FALSE), sep = "\n")
+cat("\n```\n")
+```
+
 \newpage
 
 # Conclusiones
+
+El presente trabajo ha permitido aplicar de forma integrada los conocimientos adquiridos a lo largo de la asignatura *Software para el Análisis de Datos* sobre un caso real de interés biomédico basado en la cohorte TCGA-KIRC de carcinoma renal de células claras. A partir de datos clínicos y transcriptómicos procedentes del proyecto TCGA, se ha desarrollado un flujo de trabajo que abarca desde la adquisición y preparación de los datos hasta su análisis estadístico, bioinformático y visualización interactiva.
+
+En relación con los objetivos planteados en la actividad, se ha realizado una descripción y preparación de los conjuntos de datos, incluyendo la identificación y tratamiento de valores faltantes, la clasificación de variables y la evaluación de su calidad. Asimismo, se han formulado y resuelto diferentes preguntas de interés mediante técnicas de análisis descriptivo, inferencia estadística y simulación, aplicando los conceptos desarrollados a lo largo de los distintos laboratorios de la asignatura.
+
+Los resultados obtenidos muestran que variables clínicas como el estadio patológico, el grado tumoral y la edad al diagnóstico presentan una relación con la evolución clínica de los pacientes. Los análisis de supervivencia permitieron caracterizar el comportamiento de la cohorte y evaluar el impacto de diferentes variables clínicas sobre el pronóstico de la enfermedad. Además, la simulación mediante remuestreo bootstrap permitió ilustrar la aplicación de técnicas probabilísticas para estimar la variabilidad de determinados parámetros clínicos.
+
+En el apartado correspondiente a los modelos de aprendizaje automático, se optó por la aplicación de técnicas no supervisadas de análisis exploratorio multivariante sobre los datos transcriptómicos. Esta elección se justificó por el carácter exploratorio del estudio y por el interés en identificar patrones globales de expresión génica sin definir previamente grupos de entrenamiento. Concretamente, el análisis de componentes principales (PCA) permitió reducir la dimensionalidad de los datos y visualizar la estructura general de las muestras, mientras que el clustering jerárquico representado mediante mapas de calor permitió agrupar muestras y genes según la similitud de sus perfiles de expresión. Ambas aproximaciones mostraron una clara separación entre muestras tumorales y tejido normal, poniendo de manifiesto la existencia de patrones transcriptómicos diferenciados asociados al estado tumoral. Estos resultados muestran la utilidad de las técnicas no supervisadas para explorar datos de alta dimensionalidad y generar hipótesis biológicas relevantes.
+
+La aplicación desarrollada mediante Shiny permitió integrar parte de los resultados obtenidos en una herramienta interactiva de visualización, facilitando la exploración de la información clínica y transcriptómica y poniendo en práctica los contenidos relacionados con la comunicación y presentación de resultados.
+
+Además de los requisitos establecidos en la PEC, se incorporaron análisis adicionales motivados por el interés en profundizar en la interpretación biológica de los datos. Entre ellos destacan el análisis de expresión diferencial mediante DESeq2, la integración de información clínica y transcriptómica, la evaluación del posible valor pronóstico de genes candidatos mediante modelos de Cox y la contextualización biológica de los hallazgos obtenidos. Estos análisis no eran estrictamente necesarios para cumplir los objetivos de la actividad, pero permitieron aplicar herramientas bioinformáticas ampliamente utilizadas en investigación biomédica y ampliar la comprensión del conjunto de datos estudiado.
+
+A pesar de los resultados obtenidos, el estudio presenta algunas limitaciones. La disponibilidad de determinadas variables clínicas es limitada y el análisis molecular realizado se ha centrado principalmente en la expresión génica. Futuras líneas de trabajo podrían incorporar análisis funcionales, estudios de enriquecimiento biológico, validaciones en cohortes independientes o modelos predictivos supervisados que permitan evaluar con mayor detalle el valor pronóstico de los biomarcadores identificados.
+
+En conjunto, este trabajo ha permitido aplicar de forma práctica los contenidos desarrollados a lo largo de la asignatura, integrando técnicas de preparación de datos, análisis estadístico, simulación, análisis multivariante y visualización interactiva sobre un problema biomédico real. Los resultados obtenidos muestran el potencial de las herramientas bioinformáticas para extraer información relevante a partir de datos complejos y ponen de manifiesto el interés de combinar información clínica y molecular para mejorar la comprensión del carcinoma renal de células claras.
 
 \newpage
 

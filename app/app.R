@@ -16,17 +16,17 @@ get_variable_label <- function(variable_name, labels) {
   if (variable_name %in% names(labels)) {
     return(labels[[variable_name]])
   }
-
+  
   gsub("_", " ", variable_name)
 }
 
 resolve_project_dir <- function() {
   app_dir <- shiny::getShinyOption("appDir")
-
+  
   if (!is.null(app_dir) && nzchar(app_dir)) {
     return(dirname(normalizePath(app_dir, winslash = "/", mustWork = FALSE)))
   }
-
+  
   frame_files <- vapply(
     sys.frames(),
     function(env) {
@@ -36,17 +36,17 @@ resolve_project_dir <- function() {
     character(1)
   )
   frame_files <- frame_files[nzchar(frame_files)]
-
+  
   if (length(frame_files) > 0) {
     return(dirname(dirname(normalizePath(frame_files[[length(frame_files)]], winslash = "/", mustWork = FALSE))))
   }
-
+  
   project_dir <- getwd()
-
+  
   if (basename(project_dir) %in% c("scripts", "app")) {
     project_dir <- dirname(project_dir)
   }
-
+  
   project_dir
 }
 
@@ -55,7 +55,7 @@ build_clinical_data <- function(clinical_path) {
   age_median <- median(clinical_raw$age_at_diagnosis, na.rm = TRUE)
   days_per_year <- 365.25
   days_per_month <- days_per_year / 12
-
+  
   clinical_raw %>%
     transmute(
       patient_id = submitter_id,
@@ -95,19 +95,19 @@ build_expression_data <- function(se_path) {
   } else {
     assayNames(se_object)[1]
   }
-
+  
   expression_matrix <- assay(se_object, assay_name)
   sample_ids <- colnames(expression_matrix)
   gene_names <- rowData(se_object)$gene_name
-
+  
   if (is.null(gene_names)) {
     gene_names <- rownames(expression_matrix)
   }
-
+  
   gene_names <- ifelse(is.na(gene_names) | gene_names == "", rownames(expression_matrix), gene_names)
   unique_gene_names <- make.unique(as.character(gene_names))
   rownames(expression_matrix) <- unique_gene_names
-
+  
   sample_metadata <- tibble::tibble(
     sample_id = sample_ids,
     patient_id = substr(sample_ids, 1, 12),
@@ -119,9 +119,9 @@ build_expression_data <- function(se_path) {
     )
   ) %>%
     filter(sample_type_code %in% c("01", "11"))
-
+  
   expression_matrix <- expression_matrix[, sample_metadata$sample_id, drop = FALSE]
-
+  
   list(
     matrix = expression_matrix,
     metadata = sample_metadata,
@@ -133,11 +133,11 @@ build_expression_data <- function(se_path) {
 build_survival_dataset <- function(clinical_data, sample_data, expression_matrix, gene_symbol) {
   tumor_samples <- sample_data %>%
     filter(tissue_group == "Tumor primario")
-
+  
   if (!(gene_symbol %in% rownames(expression_matrix))) {
     return(clinical_data %>% filter(patient_id %in% tumor_samples$patient_id))
   }
-
+  
   gene_values <- tibble::tibble(
     patient_id = tumor_samples$patient_id,
     gene_expression = as.numeric(expression_matrix[gene_symbol, tumor_samples$sample_id]),
@@ -145,13 +145,13 @@ build_survival_dataset <- function(clinical_data, sample_data, expression_matrix
   ) %>%
     group_by(patient_id) %>%
     summarise(gene_expression = mean(gene_expression, na.rm = TRUE), .groups = "drop")
-
+  
   survival_data <- clinical_data %>%
     filter(patient_id %in% tumor_samples$patient_id) %>%
     inner_join(gene_values, by = "patient_id")
-
+  
   gene_cutoff <- median(survival_data$gene_expression, na.rm = TRUE)
-
+  
   survival_data %>%
     mutate(
       gene_group = if_else(gene_expression >= gene_cutoff, "Alta expresión", "Baja expresión")
@@ -160,17 +160,17 @@ build_survival_dataset <- function(clinical_data, sample_data, expression_matrix
 
 make_km_data <- function(fit_object) {
   fit_summary <- summary(fit_object)
-
+  
   if (length(fit_summary$time) == 0) {
     return(tibble::tibble())
   }
-
+  
   strata_names <- fit_summary$strata
-
+  
   if (is.null(strata_names)) {
     strata_names <- rep("Cohorte completa", length(fit_summary$time))
   }
-
+  
   tibble::tibble(
     time = fit_summary$time,
     surv = fit_summary$surv,
@@ -186,7 +186,7 @@ make_km_data <- function(fit_object) {
 
 project_dir <- resolve_project_dir()
 clinical_path <- file.path(project_dir, "data", "prepared", "clinical_data_TCGA_KIRC.rds")
-se_path <- file.path(project_dir, "data", "prepared", "tcga_kirc_star_counts_se.rds")
+se_path <- file.path(project_dir, "data", "prepared", "tcga_kirc_star_counts_se_small.rds")
 
 if (!file.exists(clinical_path) || !file.exists(se_path)) {
   stop(
@@ -258,7 +258,7 @@ ui <- page_navbar(
   header = tagList(
     tags$head(
       tags$style(HTML(
-      ":root {
+        ":root {
          --app-bg: #ffffff;
          --surface: #f8fbff;
          --surface-strong: #eef6ff;
@@ -691,7 +691,7 @@ ui <- page_navbar(
             "Grado tumoral" = "grade",
             "Edad al diagnóstico" = "age",
             "Sexo biológico" = "sex",
-            "Expresión del gen seleccionado" = "gene"
+            "Expresión génica y supervivencia" = "gene"
           ),
           selected = "global"
         ),
@@ -729,7 +729,7 @@ server <- function(input, output, session) {
     selected = default_gene,
     server = TRUE
   )
-
+  
   updateSelectizeInput(
     session = session,
     inputId = "survival_gene",
@@ -737,7 +737,7 @@ server <- function(input, output, session) {
     selected = default_gene,
     server = TRUE
   )
-
+  
   overview_labels <- c(
     tissue_group = "Tipo de tejido",
     ajcc_pathologic_stage = "Estadio AJCC",
@@ -746,28 +746,28 @@ server <- function(input, output, session) {
     sex = "Sexo",
     vital_status = "Estado vital"
   )
-
+  
   gene_data <- reactive({
     req(input$gene_symbol)
     req(input$gene_symbol %in% rownames(expression_matrix))
-
+    
     gene_df <- analysis_data %>%
       mutate(expression_value = as.numeric(expression_matrix[input$gene_symbol, sample_id]))
-
+    
     if (isTRUE(input$only_tumor_samples)) {
       gene_df <- gene_df %>% filter(tissue_group == "Tumor primario")
     }
-
+    
     gene_df %>%
       filter(!is.na(.data[[input$gene_grouping]]), !is.na(expression_value))
   })
-
+  
   survival_context <- reactive({
     base_survival <- clinical_data %>%
       filter(!is.na(survival_time_months), survival_time_months > 0)
-
+    
     view <- input$survival_view %||% "global"
-
+    
     if (identical(view, "global")) {
       return(list(
         data = base_survival,
@@ -777,7 +777,7 @@ server <- function(input, output, session) {
         strata_levels = "Cohorte completa"
       ))
     }
-
+    
     if (identical(view, "ajcc")) {
       surv_df <- base_survival %>%
         filter(ajcc_pathologic_stage %in% c("Stage I", "Stage II", "Stage III", "Stage IV")) %>%
@@ -793,7 +793,7 @@ server <- function(input, output, session) {
             levels = c("Estadio I", "Estadio II", "Estadio III", "Estadio IV")
           )
         )
-
+      
       return(list(
         data = surv_df,
         group_variable = "survival_group",
@@ -802,12 +802,12 @@ server <- function(input, output, session) {
         strata_levels = levels(surv_df$survival_group)
       ))
     }
-
+    
     if (identical(view, "grade")) {
       surv_df <- base_survival %>%
         filter(tumor_grade %in% c("G1", "G2", "G3", "G4")) %>%
         mutate(survival_group = factor(tumor_grade, levels = c("G1", "G2", "G3", "G4")))
-
+      
       return(list(
         data = surv_df,
         group_variable = "survival_group",
@@ -816,7 +816,7 @@ server <- function(input, output, session) {
         strata_levels = levels(surv_df$survival_group)
       ))
     }
-
+    
     if (identical(view, "age")) {
       surv_df <- base_survival %>%
         mutate(
@@ -829,7 +829,7 @@ server <- function(input, output, session) {
           survival_group = factor(survival_group, levels = c("<50 años", "50-70 años", ">70 años"))
         ) %>%
         filter(!is.na(survival_group))
-
+      
       return(list(
         data = surv_df,
         group_variable = "survival_group",
@@ -838,7 +838,7 @@ server <- function(input, output, session) {
         strata_levels = levels(surv_df$survival_group)
       ))
     }
-
+    
     if (identical(view, "sex")) {
       surv_df <- base_survival %>%
         filter(sex %in% c("male", "female")) %>%
@@ -848,7 +848,7 @@ server <- function(input, output, session) {
             levels = c("Mujer", "Hombre")
           )
         )
-
+      
       return(list(
         data = surv_df,
         group_variable = "survival_group",
@@ -857,7 +857,7 @@ server <- function(input, output, session) {
         strata_levels = levels(surv_df$survival_group)
       ))
     }
-
+    
     surv_df <- build_survival_dataset(
       clinical_data = clinical_data,
       sample_data = sample_data,
@@ -866,7 +866,7 @@ server <- function(input, output, session) {
     ) %>%
       filter(!is.na(survival_time_months), survival_time_months > 0) %>%
       mutate(survival_group = factor(gene_group, levels = c("Alta expresión", "Baja expresión")))
-
+    
     list(
       data = surv_df,
       group_variable = "survival_group",
@@ -875,14 +875,14 @@ server <- function(input, output, session) {
       strata_levels = levels(surv_df$survival_group)
     )
   })
-
+  
   output$overview_plot <- renderPlot({
     overview_df <- clinical_data %>%
       transmute(group = as.character(.data[[input$overview_variable]])) %>%
       filter(!is.na(group), nzchar(group)) %>%
       group_by(group) %>%
       summarise(n = dplyr::n(), .groups = "drop")
-
+    
     ggplot(overview_df, aes(x = reorder(group, n), y = n, fill = group)) +
       geom_col(width = 0.75, show.legend = FALSE) +
       coord_flip() +
@@ -897,7 +897,7 @@ server <- function(input, output, session) {
         plot.margin = margin(8, 18, 8, 6)
       )
   })
-
+  
   output$overview_table <- renderDT({
     clinical_data %>%
       dplyr::select(
@@ -951,17 +951,17 @@ server <- function(input, output, session) {
       ) %>%
       formatRound(columns = c("Edad al diagnóstico", "Supervivencia (meses)"), digits = 2, dec.mark = ",")
   })
-
+  
   output$gene_plot_title <- renderText({
     paste("Expresión de", input$gene_symbol)
   })
-
+  
   output$gene_plot <- renderPlot({
     gene_df <- gene_data() %>%
       mutate(group = factor(.data[[input$gene_grouping]]))
-
+    
     group_label <- tolower(get_variable_label(input$gene_grouping, overview_labels))
-
+    
     ggplot(gene_df, aes(x = group, y = log2(expression_value + 1))) +
       geom_boxplot(aes(fill = group), alpha = 0.94, outlier.shape = NA, width = 0.48, show.legend = FALSE, colour = "#355f8d", linewidth = 0.55) +
       geom_point(
@@ -980,7 +980,7 @@ server <- function(input, output, session) {
       ) +
       theme(axis.text.x = element_text(angle = 18, hjust = 1))
   })
-
+  
   output$gene_summary <- renderTable({
     gene_data() %>%
       mutate(group = .data[[input$gene_grouping]]) %>%
@@ -992,12 +992,12 @@ server <- function(input, output, session) {
         .groups = "drop"
       )
   }, striped = TRUE, bordered = FALSE, spacing = "s")
-
+  
   output$survival_plot <- renderPlot({
     ctx <- survival_context()
     surv_df <- ctx$data
     req(nrow(surv_df) > 1)
-
+    
     fit <- if (is.null(ctx$group_variable)) {
       survfit(
         Surv(survival_time_months, death_event) ~ 1,
@@ -1009,15 +1009,15 @@ server <- function(input, output, session) {
         data = surv_df
       )
     }
-
+    
     km_data <- make_km_data(fit)
     req(nrow(km_data) > 0)
-
+    
     if (!is.null(ctx$strata_levels)) {
       km_data <- km_data %>%
         mutate(strata = factor(strata, levels = ctx$strata_levels))
     }
-
+    
     survival_plot <- ggplot(km_data, aes(x = time, y = surv)) +
       scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
       labs(
@@ -1026,7 +1026,7 @@ server <- function(input, output, session) {
         x = "Tiempo de seguimiento (meses)",
         y = "Supervivencia estimada"
       )
-
+    
     if (is.null(ctx$group_variable)) {
       survival_plot +
         geom_step(colour = "#2D708E", linewidth = 1.15)
@@ -1037,38 +1037,64 @@ server <- function(input, output, session) {
         labs(colour = ctx$legend_title)
     }
   })
-
+  
   output$survival_caption <- renderText({
     ctx <- survival_context()
     surv_df <- ctx$data
     req(nrow(surv_df) > 1)
-
+    
     if (is.null(ctx$group_variable)) {
       fit <- survfit(Surv(survival_time_months, death_event) ~ 1, data = surv_df)
       fit_table <- summary(fit)$table
       median_value <- unname(fit_table["median"])
-
+      
       if (is.na(median_value)) {
         return("Supervivencia global de la cohorte clínica")
       }
-
+      
       return(paste("Mediana de supervivencia estimada:", round(median_value, 1), "meses"))
     }
-
+    
     diff_object <- survdiff(
       as.formula(paste("Surv(survival_time_months, death_event) ~", ctx$group_variable)),
       data = surv_df
     )
-
-    p_value <- 1 - pchisq(diff_object$chisq, df = max(length(diff_object$n) - 1, 1))
-    paste("Prueba de log-rank: p =", format.pval(p_value, digits = 3, eps = 0.001))
+    
+    p_value <- 1 - pchisq(
+      diff_object$chisq,
+      df = max(length(diff_object$n) - 1, 1)
+    )
+    
+    if (identical(input$survival_view, "gene")) {
+      cox_fit <- coxph(
+        Surv(survival_time_months, death_event) ~ survival_group,
+        data = surv_df
+      )
+      
+      cox_summary <- summary(cox_fit)
+      hr <- cox_summary$coefficients[, "exp(coef)"][1]
+      
+      return(
+        paste0(
+          "Prueba de log-rank: p = ",
+          format.pval(p_value, digits = 3, eps = 0.001),
+          " | HR alta vs baja expresión = ",
+          round(hr, 2)
+        )
+      )
+    }
+    
+    paste(
+      "Prueba de log-rank: p =",
+      format.pval(p_value, digits = 3, eps = 0.001)
+    )
   })
-
+  
   output$survival_counts <- renderTable({
     ctx <- survival_context()
     surv_df <- ctx$data
     req(nrow(surv_df) > 1)
-
+    
     if (is.null(ctx$group_variable)) {
       return(
         tibble::tibble(
@@ -1078,7 +1104,7 @@ server <- function(input, output, session) {
         )
       )
     }
-
+    
     group_counts <- surv_df %>%
       mutate(grupo = as.character(.data[[ctx$group_variable]])) %>%
       filter(!is.na(grupo), nzchar(grupo)) %>%
@@ -1088,14 +1114,14 @@ server <- function(input, output, session) {
         eventos = sum(death_event, na.rm = TRUE),
         .groups = "drop"
       )
-
+    
     if (!is.null(ctx$strata_levels)) {
       group_counts <- group_counts %>%
         mutate(grupo = factor(grupo, levels = ctx$strata_levels)) %>%
         arrange(grupo) %>%
         mutate(grupo = as.character(grupo))
     }
-
+    
     group_counts
   }, striped = TRUE, bordered = FALSE, spacing = "s", align = "ccc")
 }
