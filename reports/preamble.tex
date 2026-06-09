@@ -11,8 +11,10 @@
 \usepackage{placeins}
 \usepackage{fvextra}
 \usepackage{array}
+\usepackage{wrapfig}
 \usepackage{csquotes}
 \usepackage{titlesec}
+\usepackage{tocloft}
 
 % Mantiene el formato APA de las referencias, pero muestra etiquetas [n]
 % en la bibliografia para que coincidan con las citas numericas del texto.
@@ -51,6 +53,33 @@
 \captionsetup[figure]{labelfont=bf,labelsep=period,font=small}
 \captionsetup[table]{labelfont=bf,labelsep=period,font=small}
 \addto\captionsspanish{\renewcommand{\tablename}{Tabla}}
+
+% Prefijos en los indices de figuras y tablas
+\renewcommand{\cftfigpresnum}{Figura\ }
+\renewcommand{\cfttabpresnum}{Tabla\ }
+\settowidth{\cftfignumwidth}{Figura 10\ }
+\settowidth{\cfttabnumwidth}{Tabla 10\ }
+
+% Lista de codigos
+\makeatletter
+\newcounter{codeblock}
+\renewcommand{\thecodeblock}{\arabic{codeblock}}
+\newcommand{\listofcodesname}{Indice de codigos}
+\newcommand{\codeblockname}{Codigo}
+\newcommand{\listofcodes}{%
+    \section*{\listofcodesname}%
+    \@starttoc{loc}%
+}
+\newcommand{\l@codeblock}{\@dottedtocline{1}{1.5em}{5.8em}}
+\newcommand{\codecaption}[2][]{%
+    \refstepcounter{codeblock}%
+    \par\medskip
+    \noindent{\small\textbf{\codeblockname~\thecodeblock.} #2}%
+    \if\relax\detokenize{#1}\relax\else\label{#1}\fi%
+    \par\smallskip
+    \addcontentsline{loc}{codeblock}{\protect\numberline{\codeblockname~\thecodeblock}#2}%
+}
+\makeatother
 
 % Hace que los encabezados de quinto nivel no aparezcan en linea con el texto.
 \titleformat{\paragraph}[block]{\normalfont\normalsize\bfseries}{\theparagraph}{1em}{}
