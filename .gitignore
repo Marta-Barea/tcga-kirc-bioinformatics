@@ -63,6 +63,13 @@ reports/*.toc
 reports/*.fls
 reports/*.fdb_latexmk
 reports/*.synctex.gz
+reports/*.loc
+reports/*.lof
+reports/*.bbl
+reports/*.blg
+reports/*.bcf
+reports/*.run.xml
+reports/*.lot
 
 # MANIFEST.txt
 MANIFEST.txt
