@@ -729,7 +729,6 @@ A raíz de estas observaciones, se llevó a cabo un análisis específico de la 
 
 Para ello, primero se creó una tabla que indica si los datos están presentes o ausentes en cada variable y observación mediante `is.na()`. Después, se calculó el porcentaje de datos faltantes de cada variable y estas se ordenaron de menor a mayor cantidad de valores ausentes. Así, es más fácil identificar qué variables están casi completas y cuáles presentan una mayor cantidad de datos faltantes. Finalmente, esta información se representó mediante un *heatmap* empleando el paquete `ggplot2`, donde cada fila representa una variable clínica y cada columna una observación del conjunto de datos.
 
-
 ```{r missingness-heatmap-theme}
 # Cargar librerías necesarias
 library(ggplot2)
@@ -1787,23 +1786,35 @@ ggplot(grade_stage_data, aes(x = ajcc_pathologic_stage, y = proportion, fill = t
   )
 ```
 
-Con el fin de complementar la interpretación de la asociación observada, se calcularon probabilidades condicionadas a partir de la tabla de contingencia. En particular, se estimó la probabilidad de presentar enfermedad avanzada (estadios III-IV) entre los pacientes con tumores de alto grado (G3-G4), abordando así la cuestión de qué proporción de estos pacientes se encuentra en fases avanzadas de la enfermedad.
+Con el fin de complementar la interpretación de la asociación observada, se calcularon probabilidades condicionadas a partir de la tabla de contingencia. En particular, se plantearon tres cuestiones de probabilidad relacionadas con la distribución conjunta del grado tumoral y el estadio patológico AJCC:
+
+1. ¿Cuál es la probabilidad de presentar enfermedad avanzada (estadios III-IV) entre los pacientes con tumores de alto grado (G3-G4)?
+2. ¿Cuál es la probabilidad de presentar un tumor de alto grado (G3-G4) entre los pacientes con enfermedad avanzada?
+3. ¿Cuál es la probabilidad de presentar simultáneamente un tumor de alto grado y enfermedad avanzada dentro del conjunto total de pacientes?
 
 ```{r grade-ajcc-conditional-probabilities}
 # Definir grados tumorales altos y estadios avanzados 
-high_grade <- c("G3", "G4") 
+high_grade <- c("G3", "G4")
 advanced_stage <- c("Stage III", "Stage IV") 
 
-# Calcular probabilidad condicionada
-prob_advanced_given_high_grade <- sum( 
-  tabla_grade_stage[high_grade, advanced_stage] 
-  ) / sum(tabla_grade_stage[high_grade, ]) 
+# Probabilidad de enfermedad avanzada dado alto grado 
+prob_advanced_given_high_grade <- sum( tabla_grade_stage[high_grade, advanced_stage] ) / sum(tabla_grade_stage[high_grade, ]) 
 
-# Expresarlo en porcentaje 
-round(prob_advanced_given_high_grade * 100, 2)
+# Probabilidad de alto grado dado enfermedad avanzada 
+prob_high_grade_given_advanced <- sum( tabla_grade_stage[high_grade, advanced_stage] ) / sum(tabla_grade_stage[, advanced_stage]) 
+
+# Probabilidad conjunta de alto grado y enfermedad avanzada 
+prob_high_grade_and_advanced <- sum( tabla_grade_stage[high_grade, advanced_stage] ) / sum(tabla_grade_stage) 
+
+# Mostrar resultados en porcentaje 
+probability_results <- data.frame( Cuestion = c( "P(enfermedad avanzada | alto grado)", "P(alto grado | enfermedad avanzada)", "P(alto grado y enfermedad avanzada)" ), Probabilidad = round( c( prob_advanced_given_high_grade, prob_high_grade_given_advanced, prob_high_grade_and_advanced ) * 100, 2 ) )
+
+print(probability_results)
 ```
 
-Los resultados mostraron que el 56.84 % de los pacientes con tumores de alto grado presentaban estadios avanzados de la enfermedad. Este resultado refuerza la asociación observada mediante la prueba $\chi^2$ y sugiere que los tumores menos diferenciados tienden a diagnosticarse en fases más avanzadas de progresión tumoral.
+Los resultados obtenidos permiten interpretar la relación entre el grado tumoral y el estadio patológico desde una perspectiva probabilística. En primer lugar, se observó que el 56,84 % de los pacientes con tumores de alto grado (G3-G4) presentaban enfermedad avanzada (estadios III-IV), lo que indica que más de la mitad de los tumores poco diferenciados se diagnosticaron en fases avanzadas de progresión tumoral. En segundo lugar, se estimó que el 77,88 % de los pacientes con enfermedad avanzada presentaban tumores de alto grado, lo que pone de manifiesto una fuerte asociación entre ambas características clínicas. Finalmente, la probabilidad conjunta de presentar simultáneamente un tumor de alto grado y enfermedad avanzada fue del 30,17 %, indicando que aproximadamente uno de cada tres pacientes de la cohorte reunía ambas condiciones.
+
+En conjunto, estas tres cuestiones de probabilidad complementan los resultados obtenidos mediante la prueba $\chi^2$ de independencia y refuerzan la evidencia de una asociación entre el grado tumoral y el estadio patológico. Los resultados sugieren que los tumores menos diferenciados tienden a diagnosticarse en estadios más avanzados y presentan un comportamiento clínico más agresivo.
 
 ### Análisis de superviviencia
 
@@ -3094,6 +3105,8 @@ cat("\n```\n")
 # Conclusiones
 
 El presente trabajo ha permitido aplicar de forma integrada los conocimientos adquiridos a lo largo de la asignatura *Software para el Análisis de Datos* sobre un caso real de interés biomédico basado en la cohorte TCGA-KIRC de carcinoma renal de células claras. A partir de datos clínicos y transcriptómicos procedentes del proyecto TCGA, se ha desarrollado un flujo de trabajo que abarca desde la adquisición y preparación de los datos hasta su análisis estadístico, bioinformático y visualización interactiva.
+
+Concretamente, el proyecto se ha desarrollado de forma individual, lo que ha supuesto la participación directa en todas las fases del estudio, desde la adquisición y preparación de los datos hasta el análisis estadístico, bioinformático y la implementación de la aplicación Shiny. Esta circunstancia ha favorecido la consolidación de competencias relacionadas con la manipulación y depuración de datos, la programación en R, la inferencia estadística, la simulación, el análisis multivariante, la visualización de resultados y la elaboración de flujos de trabajo reproducibles. Asimismo, el desarrollo individual del proyecto ha permitido adquirir una comprensión global de cada una de las etapas del análisis y de las decisiones metodológicas adoptadas durante el estudio.
 
 En relación con los objetivos planteados en la actividad, se ha realizado una descripción y preparación de los conjuntos de datos, incluyendo la identificación y tratamiento de valores faltantes, la clasificación de variables y la evaluación de su calidad. Asimismo, se han formulado y resuelto diferentes preguntas de interés mediante técnicas de análisis descriptivo, inferencia estadística y simulación, aplicando los conceptos desarrollados a lo largo de los distintos laboratorios de la asignatura.
 
